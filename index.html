@@ -1,4 +1,14 @@
-<!DOCTYPE html>
+<div class="plan-card-date">
+                  ${fecha.toLocaleDateString('es-ES')}
+                </div>
+              </div>
+              <div class="plan-card-stats">
+                <div class="plan-stat">
+                  <div class="plan-stat-value">${this.formatearMoneda(totalImporte)}</div>
+                  <div class="plan-stat-label">Deuda Total</div>
+                </div>
+                <div class="plan-stat">
+                  <div class="plan-stat-value">${desc<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -363,6 +373,25 @@
     }
 
     /* Resultados */
+    .resultado-simulacion {
+      margin-top: 2rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, #fffbf0 0%, #fff4e0 100%);
+      border-radius: var(--radius-lg);
+      border: 1px solid #ffd93d;
+      display: none;
+      animation: slideUp 0.3s ease;
+    }
+
+    .resultado-simulacion h3 {
+      color: var(--warning);
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
     .resultado-final {
       margin-top: 2rem;
       padding: 2rem;
@@ -371,6 +400,94 @@
       border: 1px solid #dae7fe;
       display: none;
       animation: slideUp 0.3s ease;
+    }
+
+    .resultado-final h3 {
+      color: var(--primary);
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .alerta-rentabilidad {
+      background: var(--danger);
+      color: white;
+      padding: 1rem;
+      border-radius: var(--radius);
+      margin: 1.5rem 0;
+      display: flex;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .alerta-rentabilidad p {
+      margin: 0.5rem 0 0;
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumen-item {
+      background: white;
+      padding: 1rem;
+      border-radius: var(--radius);
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .resumen-item label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .resumen-item .valor {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .resumen-item.warning .valor {
+      color: var(--warning);
+    }
+
+    .resumen-item.danger .valor {
+      color: var(--danger);
+    }
+
+    .comisiones-desglose {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: var(--radius);
+      margin: 1rem 0;
+    }
+
+    .comisiones-desglose h4 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .comisiones-desglose table {
+      width: 100%;
+      font-size: 0.875rem;
+    }
+
+    .comisiones-desglose td {
+      padding: 0.25rem 0;
+    }
+
+    .comisiones-desglose .total {
+      font-weight: 600;
+      border-top: 1px solid var(--border);
+      padding-top: 0.5rem;
+      margin-top: 0.5rem;
     }
 
     @keyframes slideUp {
@@ -624,7 +741,16 @@
       <span id="lastUpdate" style="color: var(--text-secondary); font-size: 0.75rem;"></span>
     </div>
     <div class="d-flex gap-1">
-      <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app.showInfo()">
+              <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="window.location.href='dashboard.html'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h18v18H3z"></path>
+            <path d="M9 3v18"></path>
+            <path d="M21 9H3"></path>
+            <path d="M21 15H3"></path>
+          </svg>
+          Dashboard
+        </button>
+        <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app.showInfo()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -777,21 +903,66 @@
               </svg>
               Guardar Borrador
             </button>
-            <button type="submit" class="btn btn-primario" id="btnCalcular">
+            <button type="button" class="btn btn-secundario" id="btnSimular">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
               </svg>
-              Calcular y Guardar Plan
+              Simular Plan
+            </button>
+            <button type="submit" class="btn btn-primario" id="btnCalcular" style="display: none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Contratar y Guardar
             </button>
           </div>
         </div>
       </form>
 
+      <!-- Vista previa de simulación -->
+      <div class="resultado-simulacion" id="resultadoSimulacion" style="display: none;">
+        <h3>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+            <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
+          </svg>
+          Simulación del Plan
+        </h3>
+        <div id="simulacion-content"></div>
+        <div class="alerta-rentabilidad" id="alertaRentabilidad" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <strong>Atención: Plan poco rentable</strong>
+            <p id="mensajeRentabilidad"></p>
+          </div>
+        </div>
+        <div class="d-flex gap-1 mt-2 justify-between">
+          <button type="button" class="btn btn-secundario" onclick="app.modificarSimulacion()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Modificar
+          </button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-success" id="btnConfirmarPlan">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Confirmar y Contratar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="resultado-final" id="resultadoFinal">
-        <h3>Plan Calculado Correctamente ✓</h3>
-        <p>El plan ha sido guardado en el repositorio. Puedes descargarlo en PDF o compartirlo.</p>
-        <div class="d-flex gap-1 mt-2">
+        <h3>✓ Plan Guardado Correctamente</h3>
+        <p>El plan ha sido guardado en el repositorio y está listo para ser enviado al cliente.</p>
+        <div class="resumen-final" id="resumenFinal"></div>
+        <div class="d-flex gap-1 mt-3 justify-center">
           <button class="btn btn-success" id="btnDescargarPDF">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -800,11 +971,25 @@
             </svg>
             Descargar PDF
           </button>
+          <button class="btn btn-secundario" id="btnEnviarEmail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            Enviar por Email
+          </button>
           <button class="btn btn-secundario" id="btnVerEnGitHub">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
             </svg>
             Ver en GitHub
+          </button>
+          <button class="btn btn-primario" onclick="app.nuevoCliente()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo Cliente
           </button>
         </div>
       </div>
@@ -832,6 +1017,26 @@
     </div>
   </div>
 
+  <!-- Modal para seguimiento de estado -->
+  <div id="modalSeguimiento" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3>Seguimiento del Plan</h3>
+        <button type="button" class="btn btn-icon" onclick="app.cerrarModalSeguimiento()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="seguimientoContent">
+          <!-- Se llenará dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ==================== CONFIGURACIÓN GLOBAL ====================
     const CONFIG = {
@@ -839,12 +1044,23 @@
       API_URL: window.location.hostname === 'localhost' 
         ? 'http://localhost:8888/.netlify/functions' 
         : '/.netlify/functions',
-      GITHUB_REPO: 'RlxHomie/dmd-simulador', // Cambiar por tu repo
+      GITHUB_REPO: 'tu-usuario/dmd-simulador', // Cambiar por tu repo
       
       // Valores por defecto (se actualizarán desde los archivos JSON)
       ENTIDADES: [],
       TIPOS_PRODUCTO: [],
       MAX_DESCUENTO_TOTAL: 95,
+      
+      // Estados del plan
+      ESTADOS: {
+        SIMULADO: 'simulado',
+        CONTRATADO: 'contratado',
+        EN_NEGOCIACION: 'en_negociacion',
+        APROBADO: 'aprobado',
+        EN_PAGO: 'en_pago',
+        COMPLETADO: 'completado',
+        CANCELADO: 'cancelado'
+      },
       
       // Formato de moneda
       FORMATO_MONEDA: {
@@ -860,7 +1076,13 @@
       constructor() {
         this.planes = [];
         this.configuracion = {};
+        this.comisiones = {
+          porcentaje: 20, // 20% de comisión por defecto
+          minimo: 500,    // Mínimo 500€
+          iva: 21         // 21% IVA
+        };
         this.online = navigator.onLine;
+        this.simulacionActual = null;
         this.initApp();
       }
 
@@ -912,6 +1134,14 @@
           CONFIG.TIPOS_PRODUCTO = productos.productos
             .filter(p => p.activo);
           
+          // Cargar configuración de comisiones si existe
+          if (configuracion.comisiones) {
+            this.comisiones = {
+              ...this.comisiones,
+              ...configuracion.comisiones
+            };
+          }
+          
           this.configuracion = configuracion;
           
           console.log('Configuración cargada:', {
@@ -936,7 +1166,7 @@
       }
 
       initEventListeners() {
-        // Formulario
+        // Formulario - prevenir submit por defecto
         document.getElementById('formularioSimulador').addEventListener('submit', (e) => {
           e.preventDefault();
           this.calcularYGuardarPlan();
@@ -949,6 +1179,11 @@
         document.getElementById('btnGuardarBorrador').addEventListener('click', () => this.guardarBorrador());
         document.getElementById('btnDescargarPDF').addEventListener('click', () => this.descargarPDF());
         document.getElementById('btnVerEnGitHub').addEventListener('click', () => this.verEnGitHub());
+        
+        // Nuevos botones de simulación
+        document.getElementById('btnSimular').addEventListener('click', () => this.simularPlan());
+        document.getElementById('btnConfirmarPlan').addEventListener('click', () => this.confirmarYGuardarPlan());
+        document.getElementById('btnEnviarEmail').addEventListener('click', () => this.enviarPorEmail());
 
         // Búsqueda en modal
         document.getElementById('buscarPlan').addEventListener('input', (e) => this.filtrarPlanes(e.target.value));
@@ -957,10 +1192,16 @@
         window.addEventListener('online', () => this.updateConnectionStatus(true));
         window.addEventListener('offline', () => this.updateConnectionStatus(false));
 
-        // Cerrar modal al hacer clic fuera
+        // Cerrar modales al hacer clic fuera
         document.getElementById('modalPlanes').addEventListener('click', (e) => {
           if (e.target.id === 'modalPlanes') {
             this.cerrarModalPlanes();
+          }
+        });
+
+        document.getElementById('modalSeguimiento').addEventListener('click', (e) => {
+          if (e.target.id === 'modalSeguimiento') {
+            this.cerrarModalSeguimiento();
           }
         });
       }
@@ -1081,6 +1322,224 @@
           `${filas.length} deuda${filas.length !== 1 ? 's' : ''}`;
       }
 
+      // ==================== SIMULACIÓN ====================
+      simularPlan() {
+        try {
+          // Validar datos
+          const datosCliente = this.obtenerDatosCliente();
+          if (!datosCliente) return;
+
+          const deudas = this.obtenerDeudas();
+          if (!deudas) return;
+
+          const numCuotas = parseInt(document.getElementById('numCuotas').value);
+
+          // Calcular totales
+          const totalImporte = deudas.reduce((sum, d) => sum + d.importe, 0);
+          const totalConDescuento = deudas.reduce((sum, d) => sum + d.importeConDescuento, 0);
+          const ahorro = totalImporte - totalConDescuento;
+          const descuentoMedio = (ahorro / totalImporte) * 100;
+          const cuotaMensual = totalConDescuento / numCuotas;
+
+          // Validar descuento total
+          if (descuentoMedio > CONFIG.MAX_DESCUENTO_TOTAL) {
+            this.mostrarNotificacion(
+              `El descuento total no puede superar el ${CONFIG.MAX_DESCUENTO_TOTAL}%`, 
+              'error'
+            );
+            return;
+          }
+
+          // Calcular comisiones
+          const comisionBase = Math.max(
+            ahorro * (this.comisiones.porcentaje / 100),
+            this.comisiones.minimo
+          );
+          const iva = comisionBase * (this.comisiones.iva / 100);
+          const comisionTotal = comisionBase + iva;
+
+          // Guardar simulación
+          this.simulacionActual = {
+            referencia: this.generarReferencia(),
+            fecha: new Date().toISOString(),
+            cliente: datosCliente,
+            numCuotas,
+            deudas,
+            totalImporte,
+            totalConDescuento,
+            ahorro,
+            descuentoMedio,
+            cuotaMensual,
+            comisiones: {
+              base: comisionBase,
+              iva: iva,
+              total: comisionTotal,
+              porcentaje: this.comisiones.porcentaje
+            },
+            estado: CONFIG.ESTADOS.SIMULADO,
+            timeline: [{
+              fecha: new Date().toISOString(),
+              estado: CONFIG.ESTADOS.SIMULADO,
+              usuario: 'Sistema',
+              nota: 'Plan simulado'
+            }]
+          };
+
+          // Mostrar simulación
+          this.mostrarSimulacion();
+
+        } catch (error) {
+          console.error('Error en simulación:', error);
+          this.mostrarNotificacion('Error al simular el plan', 'error');
+        }
+      }
+
+      mostrarSimulacion() {
+        const sim = this.simulacionActual;
+        if (!sim) return;
+
+        // Verificar rentabilidad
+        const esRentable = sim.ahorro > sim.comisiones.total * 1.5; // Margen del 50%
+        const margenNeto = sim.ahorro - sim.comisiones.total;
+
+        const html = `
+          <div class="resumen-grid">
+            <div class="resumen-item">
+              <label>Deuda Total</label>
+              <div class="valor">${this.formatearMoneda(sim.totalImporte)}</div>
+            </div>
+            <div class="resumen-item">
+              <label>Total a Pagar</label>
+              <div class="valor">${this.formatearMoneda(sim.totalConDescuento)}</div>
+            </div>
+            <div class="resumen-item ${esRentable ? '' : 'warning'}">
+              <label>Ahorro Cliente</label>
+              <div class="valor">${this.formatearMoneda(sim.ahorro)}</div>
+            </div>
+            <div class="resumen-item">
+              <label>Descuento Medio</label>
+              <div class="valor">${sim.descuentoMedio.toFixed(1)}%</div>
+            </div>
+            <div class="resumen-item">
+              <label>Cuota Mensual</label>
+              <div class="valor">${this.formatearMoneda(sim.cuotaMensual)}</div>
+            </div>
+            <div class="resumen-item ${esRentable ? '' : 'danger'}">
+              <label>Margen Neto</label>
+              <div class="valor">${this.formatearMoneda(margenNeto)}</div>
+            </div>
+          </div>
+
+          <div class="comisiones-desglose">
+            <h4>Desglose de Comisiones DMD</h4>
+            <table>
+              <tr>
+                <td>Comisión base (${sim.comisiones.porcentaje}% del ahorro):</td>
+                <td style="text-align: right;">${this.formatearMoneda(sim.comisiones.base)}</td>
+              </tr>
+              <tr>
+                <td>IVA (${this.comisiones.iva}%):</td>
+                <td style="text-align: right;">${this.formatearMoneda(sim.comisiones.iva)}</td>
+              </tr>
+              <tr class="total">
+                <td><strong>Total comisiones:</strong></td>
+                <td style="text-align: right;"><strong>${this.formatearMoneda(sim.comisiones.total)}</strong></td>
+              </tr>
+            </table>
+          </div>
+        `;
+
+        document.getElementById('simulacion-content').innerHTML = html;
+
+        // Mostrar alerta si no es rentable
+        if (!esRentable) {
+          document.getElementById('alertaRentabilidad').style.display = 'flex';
+          document.getElementById('mensajeRentabilidad').textContent = 
+            `El ahorro del cliente (${this.formatearMoneda(sim.ahorro)}) es inferior a las comisiones + margen requerido. ` +
+            `Se recomienda ajustar los descuentos para obtener un margen mínimo de ${this.formatearMoneda(sim.comisiones.total * 1.5)}.`;
+        } else {
+          document.getElementById('alertaRentabilidad').style.display = 'none';
+        }
+
+        // Mostrar sección y ocultar resultado final
+        document.getElementById('resultadoSimulacion').style.display = 'block';
+        document.getElementById('resultadoFinal').style.display = 'none';
+        
+        // Cambiar visibilidad de botones
+        document.getElementById('btnSimular').style.display = 'none';
+        document.getElementById('btnCalcular').style.display = 'none';
+        
+        // Scroll a la simulación
+        document.getElementById('resultadoSimulacion').scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest' 
+        });
+      }
+
+      modificarSimulacion() {
+        // Ocultar simulación y mostrar botón simular
+        document.getElementById('resultadoSimulacion').style.display = 'none';
+        document.getElementById('btnSimular').style.display = 'inline-flex';
+        
+        // Enfocar en la primera deuda
+        document.querySelector('#tablaDeudas input')?.focus();
+      }
+
+      async confirmarYGuardarPlan() {
+        if (!this.simulacionActual) {
+          this.mostrarNotificacion('No hay simulación activa', 'error');
+          return;
+        }
+
+        try {
+          this.mostrarNotificacion('Guardando plan...', 'info');
+          
+          // Usar los datos de la simulación para guardar
+          const plan = {
+            ...this.simulacionActual,
+            estado: CONFIG.ESTADOS.CONTRATADO,
+            timeline: [
+              ...this.simulacionActual.timeline,
+              {
+                fecha: new Date().toISOString(),
+                estado: CONFIG.ESTADOS.CONTRATADO,
+                usuario: 'Sistema',
+                nota: 'Plan contratado y guardado'
+              }
+            ]
+          };
+          
+          if (this.online) {
+            await this.guardarPlanEnGitHub(plan);
+          } else {
+            this.guardarPlanLocal(plan);
+            this.mostrarNotificacion('Plan guardado localmente (sin conexión)', 'warning');
+          }
+
+          // Mostrar resultado final con resumen
+          this.mostrarResultadoFinal();
+
+          // Guardar referencia para PDF
+          this.planActual = plan;
+
+        } catch (error) {
+          console.error('Error al guardar plan:', error);
+          this.mostrarNotificacion('Error al guardar el plan', 'error');
+        }
+      }
+
+      cargarConfiguracionComisiones() {
+        // Intentar cargar configuración de comisiones del localStorage o usar defaults
+        const comisionesGuardadas = localStorage.getItem('dmd_comisiones');
+        if (comisionesGuardadas) {
+          try {
+            this.comisiones = JSON.parse(comisionesGuardadas);
+          } catch (e) {
+            console.log('Usando comisiones por defecto');
+          }
+        }
+      }
+
       // ==================== CÁLCULO Y GUARDADO ====================
       async calcularYGuardarPlan() {
         try {
@@ -1109,7 +1568,7 @@
             return;
           }
 
-          // Crear objeto del plan
+          // Crear objeto del plan con estado inicial
           const plan = {
             referencia: this.generarReferencia(),
             fecha: new Date().toISOString(),
@@ -1120,7 +1579,14 @@
             totalConDescuento,
             ahorro,
             descuentoMedio,
-            cuotaMensual
+            cuotaMensual,
+            estado: CONFIG.ESTADOS.SIMULADO,
+            timeline: [{
+              fecha: new Date().toISOString(),
+              estado: CONFIG.ESTADOS.SIMULADO,
+              usuario: 'Sistema',
+              nota: 'Plan simulado'
+            }]
           };
 
           // Guardar plan
@@ -1278,8 +1744,13 @@
         const planesFiltrados = this.planes.filter(plan => {
           if (!filtro) return true;
           const busqueda = filtro.toLowerCase();
-          return plan.cliente.nombre.toLowerCase().includes(busqueda) ||
-                 plan.cliente.dni.toLowerCase().includes(busqueda) ||
+          
+          // Manejar diferentes estructuras de datos
+          const nombreCliente = plan.cliente?.nombre || plan.cliente || 'Sin nombre';
+          const dniCliente = plan.cliente?.dni || plan.dni || '';
+          
+          return nombreCliente.toLowerCase().includes(busqueda) ||
+                 dniCliente.toLowerCase().includes(busqueda) ||
                  plan.referencia.toLowerCase().includes(busqueda);
         });
 
@@ -1302,11 +1773,18 @@
 
         container.innerHTML = planesFiltrados.map(plan => {
           const fecha = new Date(plan.fecha);
+          // Manejar diferentes estructuras de datos
+          const nombreCliente = plan.cliente?.nombre || plan.cliente || 'Sin nombre';
+          const dniCliente = plan.cliente?.dni || plan.dni || '';
+          const totalImporte = plan.totalImporte || 0;
+          const descuentoMedio = plan.descuentoMedio || 0;
+          const estado = plan.estado || 'simulado';
+          
           return `
             <div class="plan-card" onclick="app.cargarPlan('${plan.referencia}')">
               <div class="plan-card-header">
                 <div>
-                  <div class="plan-card-title">${plan.cliente.nombre}</div>
+                  <div class="plan-card-title">${nombreCliente}</div>
                   <div class="plan-card-ref">${plan.referencia}</div>
                 </div>
                 <div class="plan-card-date">
@@ -1315,13 +1793,25 @@
               </div>
               <div class="plan-card-stats">
                 <div class="plan-stat">
-                  <div class="plan-stat-value">${this.formatearMoneda(plan.totalImporte)}</div>
+                  <div class="plan-stat-value">${this.formatearMoneda(totalImporte)}</div>
                   <div class="plan-stat-label">Deuda Total</div>
                 </div>
                 <div class="plan-stat">
-                  <div class="plan-stat-value">${plan.descuentoMedio.toFixed(1)}%</div>
+                  <div class="plan-stat-value">${descuentoMedio.toFixed(1)}%</div>
                   <div class="plan-stat-label">Descuento</div>
                 </div>
+              </div>
+              <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <span class="estado-badge estado-${estado}" style="font-size: 0.75rem;">
+                  ${this.traducirEstado(estado)}
+                </span>
+                <button class="btn btn-icon" style="padding: 4px; width: 28px; height: 28px;" 
+                        onclick="event.stopPropagation(); app.verSeguimiento('${plan.referencia}')" 
+                        title="Ver seguimiento">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </button>
               </div>
             </div>
           `;
@@ -1349,6 +1839,185 @@
         // Cerrar modal
         this.cerrarModalPlanes();
         this.mostrarNotificacion('Plan cargado correctamente', 'success');
+      }
+
+      // ==================== SISTEMA DE SEGUIMIENTO ====================
+      verSeguimiento(referencia) {
+        const plan = this.planes.find(p => p.referencia === referencia);
+        if (!plan) {
+          this.mostrarNotificacion('Plan no encontrado', 'error');
+          return;
+        }
+
+        this.mostrarModalSeguimiento(plan);
+      }
+
+      mostrarModalSeguimiento(plan) {
+        const content = document.getElementById('seguimientoContent');
+        
+        content.innerHTML = `
+          <div style="margin-bottom: 2rem;">
+            <h4 style="margin-bottom: 0.5rem;">${plan.cliente.nombre}</h4>
+            <p style="color: var(--text-secondary); margin: 0;">
+              Referencia: ${plan.referencia} | DNI: ${plan.cliente.dni}
+            </p>
+          </div>
+
+          <div style="margin-bottom: 2rem;">
+            <h5 style="margin-bottom: 1rem;">Cambiar Estado del Plan</h5>
+            <div class="estado-selector">
+              ${Object.entries(CONFIG.ESTADOS).map(([key, value]) => `
+                <div class="estado-option ${plan.estado === value ? 'selected' : ''}" 
+                     onclick="app.cambiarEstadoPlan('${plan.referencia}', '${value}')">
+                  <div class="estado-badge estado-${value}" style="margin-bottom: 0.5rem;">
+                    ${this.traducirEstado(value)}
+                  </div>
+                  <small>${this.descripcionEstado(value)}</small>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div>
+            <h5 style="margin-bottom: 1rem;">Timeline de Eventos</h5>
+            <div class="timeline">
+              ${(plan.timeline || []).reverse().map(evento => `
+                <div class="timeline-item">
+                  <div class="timeline-dot ${evento.estado}"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <h6 class="timeline-title">${this.traducirEstado(evento.estado)}</h6>
+                      <span class="timeline-date">${new Date(evento.fecha).toLocaleString('es-ES')}</span>
+                    </div>
+                    <p class="timeline-description">
+                      ${evento.nota || ''}<br>
+                      <small>Por: ${evento.usuario || 'Sistema'}</small>
+                    </p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('modalSeguimiento').style.display = 'flex';
+      }
+
+      cerrarModalSeguimiento() {
+        document.getElementById('modalSeguimiento').style.display = 'none';
+      }
+
+      async cambiarEstadoPlan(referencia, nuevoEstado) {
+        const plan = this.planes.find(p => p.referencia === referencia);
+        if (!plan) return;
+
+        // Validar transición de estado
+        if (!this.validarTransicionEstado(plan.estado, nuevoEstado)) {
+          this.mostrarNotificacion('Transición de estado no válida', 'error');
+          return;
+        }
+
+        // Solicitar nota/comentario
+        const nota = prompt('Añade un comentario sobre este cambio de estado:');
+        if (nota === null) return; // Cancelado
+
+        // Actualizar estado
+        plan.estado = nuevoEstado;
+        if (!plan.timeline) plan.timeline = [];
+        plan.timeline.push({
+          fecha: new Date().toISOString(),
+          estado: nuevoEstado,
+          usuario: 'Usuario Actual', // En producción vendría del sistema de auth
+          nota: nota || `Estado cambiado a ${this.traducirEstado(nuevoEstado)}`
+        });
+
+        // Guardar cambios
+        try {
+          if (this.online) {
+            await this.actualizarPlanEnGitHub(plan);
+          } else {
+            this.actualizarPlanLocal(plan);
+          }
+          
+          this.mostrarNotificacion('Estado actualizado correctamente', 'success');
+          this.mostrarModalSeguimiento(plan); // Refrescar vista
+          
+        } catch (error) {
+          console.error('Error actualizando estado:', error);
+          this.mostrarNotificacion('Error al actualizar el estado', 'error');
+        }
+      }
+
+      validarTransicionEstado(estadoActual, nuevoEstado) {
+        // Definir transiciones válidas
+        const transicionesValidas = {
+          'simulado': ['contratado', 'cancelado'],
+          'contratado': ['en_negociacion', 'aprobado', 'cancelado'],
+          'en_negociacion': ['aprobado', 'contratado', 'cancelado'],
+          'aprobado': ['en_pago', 'cancelado'],
+          'en_pago': ['completado', 'cancelado'],
+          'completado': [], // Estado final
+          'cancelado': ['simulado'] // Permite reactivar
+        };
+
+        const permitidas = transicionesValidas[estadoActual] || [];
+        return permitidas.includes(nuevoEstado) || estadoActual === nuevoEstado;
+      }
+
+      traducirEstado(estado) {
+        const traducciones = {
+          'simulado': 'Simulado',
+          'contratado': 'Contratado',
+          'en_negociacion': 'En Negociación',
+          'aprobado': 'Aprobado',
+          'en_pago': 'En Pago',
+          'completado': 'Completado',
+          'cancelado': 'Cancelado'
+        };
+        return traducciones[estado] || estado;
+      }
+
+      descripcionEstado(estado) {
+        const descripciones = {
+          'simulado': 'Plan creado',
+          'contratado': 'Cliente firmó',
+          'en_negociacion': 'Con entidades',
+          'aprobado': 'Aceptado',
+          'en_pago': 'Pagando cuotas',
+          'completado': 'Finalizado',
+          'cancelado': 'Cancelado'
+        };
+        return descripciones[estado] || '';
+      }
+
+      async actualizarPlanEnGitHub(plan) {
+        const response = await fetch(`${CONFIG.API_URL}/update-plan`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(plan)
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al actualizar en GitHub');
+        }
+
+        return response.json();
+      }
+
+      actualizarPlanLocal(plan) {
+        // Actualizar en localStorage
+        const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+        const index = planesLocales.findIndex(p => p.referencia === plan.referencia);
+        
+        if (index >= 0) {
+          planesLocales[index] = plan;
+        } else {
+          planesLocales.push(plan);
+        }
+        
+        localStorage.setItem('planes_locales', JSON.stringify(planesLocales));
       }
 
       // ==================== UTILIDADES ====================
@@ -1401,6 +2070,10 @@
           document.getElementById('formularioSimulador').reset();
           document.getElementById('tablaDeudas').innerHTML = '';
           document.getElementById('resultadoFinal').style.display = 'none';
+          document.getElementById('resultadoSimulacion').style.display = 'none';
+          document.getElementById('btnSimular').style.display = 'inline-flex';
+          document.getElementById('btnCalcular').style.display = 'none';
+          this.simulacionActual = null;
           this.agregarFilaDeuda();
           this.actualizarTotales();
           this.mostrarNotificacion('Formulario reiniciado', 'info');
@@ -1444,22 +2117,59 @@
         }
       }
 
+      mostrarResultadoFinal() {
+        const plan = this.planActual || this.simulacionActual;
+        if (!plan) return;
+
+        const html = `
+          <div class="resumen-grid">
+            <div class="resumen-item">
+              <label>Cliente</label>
+              <div class="valor" style="font-size: 1.2rem;">${plan.cliente.nombre}</div>
+            </div>
+            <div class="resumen-item">
+              <label>Referencia</label>
+              <div class="valor" style="font-size: 1.2rem;">${plan.referencia}</div>
+            </div>
+            <div class="resumen-item">
+              <label>Cuota Mensual</label>
+              <div class="valor">${this.formatearMoneda(plan.cuotaMensual)}</div>
+            </div>
+            <div class="resumen-item">
+              <label>Ahorro Total</label>
+              <div class="valor" style="color: var(--success);">${this.formatearMoneda(plan.ahorro)}</div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('resumenFinal').innerHTML = html;
+        document.getElementById('resultadoSimulacion').style.display = 'none';
+        document.getElementById('resultadoFinal').style.display = 'block';
+        document.getElementById('resultadoFinal').scrollIntoView({ behavior: 'smooth' });
+      }
+
+      nuevoCliente() {
+        this.reiniciarFormulario();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
       async descargarPDF() {
-        if (!this.planActual) {
-          this.mostrarNotificacion('No hay un plan calculado para descargar', 'warning');
+        if (!this.planActual && !this.simulacionActual) {
+          this.mostrarNotificacion('No hay un plan para descargar', 'warning');
           return;
         }
 
+        const plan = this.planActual || this.simulacionActual;
         this.mostrarNotificacion('Generando PDF...', 'info');
 
         try {
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF('p', 'mm', 'a4');
-          const plan = this.planActual;
 
           // Colores
           const primaryColor = [0, 113, 227];
           const textColor = [29, 29, 31];
+          const successColor = [52, 199, 89];
 
           // Encabezado
           pdf.setFillColor(...primaryColor);
@@ -1494,64 +2204,79 @@
           y += 8;
           pdf.text(`Fecha: ${new Date(plan.fecha).toLocaleDateString('es-ES')}`, 20, y);
 
-          // Resumen financiero
+          // Resumen financiero destacado
           y += 15;
+          pdf.setFillColor(245, 248, 250);
+          pdf.rect(15, y - 5, 180, 60, 'F');
+          
           pdf.setFont(undefined, 'bold');
-          pdf.text('RESUMEN FINANCIERO', 20, y);
+          pdf.text('RESUMEN DEL PLAN', 20, y);
 
           y += 10;
           pdf.setFont(undefined, 'normal');
           
-          // Crear tabla de resumen
-          const resumenData = [
-            ['Concepto', 'Importe'],
-            ['Deuda Total', this.formatearMoneda(plan.totalImporte)],
-            ['Total a Pagar', this.formatearMoneda(plan.totalConDescuento)],
-            ['Ahorro Total', this.formatearMoneda(plan.ahorro)],
-            ['Descuento Medio', `${plan.descuentoMedio.toFixed(1)}%`],
-            ['Número de Cuotas', `${plan.numCuotas} meses`],
-            ['Cuota Mensual', this.formatearMoneda(plan.cuotaMensual)]
-          ];
+          // Cuadro principal con información clave
+          const col1 = 20;
+          const col2 = 105;
+          
+          pdf.setFontSize(11);
+          pdf.text('Deuda Total Original:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(this.formatearMoneda(plan.totalImporte), col1 + 65, y, { align: 'right' });
+          
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Número de Cuotas:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(`${plan.numCuotas} meses`, col2 + 65, y, { align: 'right' });
 
-          // Dibujar tabla de resumen
-          const startX = 20;
-          let currentY = y;
-          const cellHeight = 8;
-          const col1Width = 100;
-          const col2Width = 70;
+          y += 8;
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Total a Pagar:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(this.formatearMoneda(plan.totalConDescuento), col1 + 65, y, { align: 'right' });
+          
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Cuota Mensual:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.setFontSize(12);
+          pdf.setTextColor(...primaryColor);
+          pdf.text(this.formatearMoneda(plan.cuotaMensual), col2 + 65, y, { align: 'right' });
 
-          resumenData.forEach((row, index) => {
-            if (index === 0) {
-              pdf.setFillColor(240, 240, 240);
-              pdf.rect(startX, currentY, col1Width + col2Width, cellHeight, 'F');
-              pdf.setFont(undefined, 'bold');
-            } else {
-              pdf.setFont(undefined, 'normal');
-            }
-
-            pdf.text(row[0], startX + 2, currentY + 6);
-            pdf.text(row[1], startX + col1Width + 2, currentY + 6);
-            
-            currentY += cellHeight;
-          });
+          y += 8;
+          pdf.setTextColor(...textColor);
+          pdf.setFontSize(11);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Ahorro Total:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.setTextColor(...successColor);
+          pdf.text(this.formatearMoneda(plan.ahorro), col1 + 65, y, { align: 'right' });
+          
+          pdf.setTextColor(...textColor);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Descuento Medio:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(`${plan.descuentoMedio.toFixed(1)}%`, col2 + 65, y, { align: 'right' });
 
           // Detalle de deudas
-          y = currentY + 15;
+          y += 25;
+          pdf.setTextColor(...textColor);
           pdf.setFont(undefined, 'bold');
-          pdf.text('DETALLE DE DEUDAS', 20, y);
+          pdf.setFontSize(12);
+          pdf.text('DETALLE DE DEUDAS INCLUIDAS', 20, y);
           y += 10;
 
           // Tabla de deudas
-          const headers = ['Contrato', 'Producto', 'Entidad', 'Importe', 'Desc.', 'Final'];
-          const colWidths = [35, 40, 35, 30, 20, 30];
+          const headers = ['Contrato', 'Producto', 'Entidad', 'Original', '% Desc.', 'Final'];
+          const colWidths = [35, 35, 35, 28, 20, 27];
 
           // Encabezados
           pdf.setFillColor(...primaryColor);
-          pdf.rect(20, y - 6, 170, 10, 'F');
+          pdf.rect(15, y - 6, 180, 10, 'F');
           pdf.setTextColor(255, 255, 255);
           pdf.setFontSize(10);
+          pdf.setFont(undefined, 'bold');
 
-          let xPos = 20;
+          let xPos = 15;
           headers.forEach((header, i) => {
             pdf.text(header, xPos + 2, y);
             xPos += colWidths[i];
@@ -1568,10 +2293,16 @@
               y = 20;
             }
 
-            xPos = 20;
+            // Alternar color de fondo
+            if (index % 2 === 0) {
+              pdf.setFillColor(248, 249, 250);
+              pdf.rect(15, y - 5, 180, 8, 'F');
+            }
+
+            xPos = 15;
             pdf.text(deuda.contrato.substring(0, 15), xPos + 2, y);
             xPos += colWidths[0];
-            pdf.text(deuda.producto.substring(0, 20), xPos + 2, y);
+            pdf.text(deuda.producto.substring(0, 15), xPos + 2, y);
             xPos += colWidths[1];
             pdf.text(deuda.entidad.substring(0, 15), xPos + 2, y);
             xPos += colWidths[2];
@@ -1579,24 +2310,64 @@
             xPos += colWidths[3];
             pdf.text(`${deuda.descuento}%`, xPos + colWidths[4] - 2, y, { align: 'right' });
             xPos += colWidths[4];
+            pdf.setFont(undefined, 'bold');
             pdf.text(this.formatearMoneda(deuda.importeConDescuento), xPos + colWidths[5] - 2, y, { align: 'right' });
+            pdf.setFont(undefined, 'normal');
 
             y += 8;
           });
 
+          // Nota importante
+          y += 15;
+          if (y > 230) {
+            pdf.addPage();
+            y = 20;
+          }
+
+          pdf.setFillColor(255, 243, 224);
+          pdf.rect(15, y - 5, 180, 30, 'F');
+          pdf.setFontSize(11);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('INFORMACIÓN IMPORTANTE', 20, y);
+          y += 7;
+          pdf.setFont(undefined, 'normal');
+          pdf.setFontSize(10);
+          pdf.text('• Este plan está sujeto a la aprobación final de las entidades acreedoras.', 20, y);
+          y += 6;
+          pdf.text('• El cliente debe mantener al día el pago de las cuotas acordadas.', 20, y);
+          y += 6;
+          pdf.text('• DMD Asesores realizará el seguimiento y gestión del plan.', 20, y);
+
           // Pie de página
           pdf.setFontSize(8);
           pdf.setTextColor(150, 150, 150);
-          pdf.text('Este documento es una estimación. Consulte con un asesor para un análisis personalizado.', 105, 285, { align: 'center' });
+          pdf.text('Este documento es confidencial y para uso exclusivo del cliente.', 105, 285, { align: 'center' });
+          pdf.text(`Generado el ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}`, 105, 290, { align: 'center' });
 
           // Guardar PDF
-          pdf.save(`Plan_${plan.referencia}.pdf`);
+          pdf.save(`Plan_${plan.referencia}_${plan.cliente.nombre.replace(/\s+/g, '_')}.pdf`);
           this.mostrarNotificacion('PDF descargado correctamente', 'success');
 
         } catch (error) {
           console.error('Error al generar PDF:', error);
           this.mostrarNotificacion('Error al generar el PDF', 'error');
         }
+      }
+
+      async enviarPorEmail() {
+        const plan = this.planActual || this.simulacionActual;
+        if (!plan || !plan.cliente.email) {
+          this.mostrarNotificacion('No se ha especificado un email válido', 'error');
+          return;
+        }
+
+        // En producción, esto llamaría a una API para enviar el email
+        this.mostrarNotificacion(`Función de email en desarrollo. Email destino: ${plan.cliente.email}`, 'info');
+        
+        // Simulación de envío
+        setTimeout(() => {
+          this.mostrarNotificacion(`Plan enviado a ${plan.cliente.email} (simulado)`, 'success');
+        }, 2000);
       }
 
       verEnGitHub() {
