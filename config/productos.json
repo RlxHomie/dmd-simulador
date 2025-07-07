@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "lastUpdate": "2024-01-01",
+  "productos": [
+    {
+      "id": "microprestamo",
+      "tipo": "Micropréstamo",
+      "maxDescuento": 50,
+      "color": "#ff9500",
+      "activo": true,
+      "descripcion": "Préstamos de importe reducido con condiciones especiales"
+    },
+    {
+      "id": "tarjeta",
+      "tipo": "Tarjeta de Crédito",
+      "maxDescuento": 25,
+      "color": "#af52de",
+      "activo": true,
+      "descripcion": "Deudas de tarjetas de crédito y revolving"
+    },
+    {
+      "id": "prestamo_personal",
+      "tipo": "Préstamo Personal",
+      "maxDescuento": 20,
+      "color": "#0a84ff",
+      "activo": true,
+      "descripcion": "Préstamos personales sin garantía"
+    },
+    {
+      "id": "prestamo_hipotecario",
+      "tipo": "Préstamo Hipotecario",
+      "maxDescuento": 10,
+      "color": "#30d158",
+      "activo": true,
+      "descripcion": "Préstamos con garantía hipotecaria"
+    },
+    {
+      "id": "linea_credito",
+      "tipo": "Línea de Crédito",
+      "maxDescuento": 30,
+      "color": "#ff375f",
+      "activo": true,
+      "descripcion": "Líneas de crédito y pólizas"
+    },
+    {
+      "id": "descubierto",
+      "tipo": "Descubierto",
+      "maxDescuento": 40,
+      "color": "#ff6482",
+      "activo": true,
+      "descripcion": "Descubiertos bancarios y sobregiros"
+    }
+  ]
+}

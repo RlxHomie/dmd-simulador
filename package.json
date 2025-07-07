@@ -1,0 +1,33 @@
+{
+  "name": "dmd-simulador",
+  "version": "2.0.0",
+  "description": "Simulador de Reestructuración de Deuda - DMD Asesores",
+  "private": true,
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed for static site'",
+    "test": "echo 'No tests configured yet'"
+  },
+  "dependencies": {
+    "@octokit/rest": "^19.0.11"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.10.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RlxHomie/dmd-simulador.git"
+  },
+  "keywords": [
+    "dmd",
+    "simulador",
+    "deuda",
+    "finanzas"
+  ],
+  "author": "DMD Asesores",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RlxHomie/dmd-simulador/issues"
+  },
+  "homepage": "https://github.com/RlxHomie/dmd-simulador#readme"
+}
