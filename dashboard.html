@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - DMD Asesores</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.29.3/index.min.js"></script>
+  <style>
+    :root {
+      --primary: #0071e3;
+      --primary-hover: #0051a3;
+      --success: #34c759;
+      --danger: #ff3b30;
+      --warning: #ffcc00;
+      --info: #5856d6;
+      --background: #f5f5f7;
+      --surface: #ffffff;
+      --text-primary: #1d1d1f;
+      --text-secondary: #666;
+      --border: #e5e5ea;
+      --shadow: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+      --radius: 12px;
+      --radius-lg: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-small {
+      height: 40px;
+      width: auto;
+      border-radius: 8px;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-secondary:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Container */
+    .dashboard-container {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    /* Date Range Selector */
+    .date-range-selector {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow);
+    }
+
+    .date-range-selector label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .date-range-selector input[type="date"] {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+
+    .quick-ranges {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+
+    .quick-range-btn {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+
+    .quick-range-btn:hover,
+    .quick-range-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .kpi-card.success::before { background: var(--success); }
+    .kpi-card.warning::before { background: var(--warning); }
+    .kpi-card.danger::before { background: var(--danger); }
+    .kpi-card.info::before { background: var(--info); }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .kpi-title {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .kpi-icon {
+      width: 40px;
+      height: 40px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .kpi-change {
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .kpi-change.positive { color: var(--success); }
+    .kpi-change.negative { color: var(--danger); }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-container {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .chart-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chart-action-btn {
+      padding: 0.25rem 0.5rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .chart-action-btn:hover {
+      background: var(--background);
+    }
+
+    /* Table */
+    .table-container {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .table-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 1rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: #f8f9fa;
+      font-size: 0.875rem;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .estado-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .estado-simulado { background: #e3f2fd; color: #1976d2; }
+    .estado-contratado { background: #e8f5e9; color: #388e3c; }
+    .estado-en_negociacion { background: #fff3e0; color: #f57c00; }
+    .estado-aprobado { background: #e8f5e9; color: #388e3c; }
+    .estado-en_pago { background: #f3e5f5; color: #7b1fa2; }
+    .estado-completado { background: #e8f5e9; color: #2e7d32; }
+    .estado-cancelado { background: #ffebee; color: #c62828; }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .date-range-selector {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .quick-ranges {
+        margin-left: 0;
+        margin-top: 1rem;
+      }
+
+      .dashboard-container {
+        padding: 0 1rem;
+      }
+    }
+
+    /* Utility Classes */
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-secondary); }
+    .font-mono { font-family: 'SF Mono', Monaco, monospace; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <h1>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Logo_DMD_Asesores.png/320px-Logo_DMD_Asesores.png" 
+             alt="DMD" class="logo-small">
+        Dashboard Analítico
+      </h1>
+      <div class="nav-buttons">
+        <a href="index.html" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+          Simulador
+        </a>
+        <button class="btn btn-secondary" onclick="dashboard.exportarDatos()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Exportar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    <!-- Date Range Selector -->
+    <div class="date-range-selector">
+      <label>Desde:</label>
+      <input type="date" id="fechaDesde">
+      <label>Hasta:</label>
+      <input type="date" id="fechaHasta">
+      <button class="btn btn-secondary" onclick="dashboard.aplicarFiltros()">Aplicar</button>
+      
+      <div class="quick-ranges">
+        <button class="quick-range-btn active" onclick="dashboard.setRangoRapido('hoy')">Hoy</button>
+        <button class="quick-range-btn" onclick="dashboard.setRangoRapido('semana')">Esta Semana</button>
+        <button class="quick-range-btn" onclick="dashboard.setRangoRapido('mes')">Este Mes</button>
+        <button class="quick-range-btn" onclick="dashboard.setRangoRapido('año')">Este Año</button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="loading">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <!-- Evolución Mensual -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title">Evolución Mensual de Planes</h3>
+          <div class="chart-actions">
+            <button class="chart-action-btn" onclick="dashboard.cambiarVistaChart('evolucion', 'line')">Línea</button>
+            <button class="chart-action-btn" onclick="dashboard.cambiarVistaChart('evolucion', 'bar')">Barras</button>
+          </div>
+        </div>
+        <canvas id="chartEvolucion"></canvas>
+      </div>
+
+      <!-- Distribución por Tipo -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title">Distribución por Tipo de Deuda</h3>
+          <div class="chart-actions">
+            <button class="chart-action-btn" onclick="dashboard.cambiarVistaChart('distribucion', 'pie')">Circular</button>
+            <button class="chart-action-btn" onclick="dashboard.cambiarVistaChart('distribucion', 'doughnut')">Donut</button>
+          </div>
+        </div>
+        <canvas id="chartDistribucion"></canvas>
+      </div>
+
+      <!-- Funnel de Conversión -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title">Funnel de Conversión</h3>
+        </div>
+        <canvas id="chartFunnel"></canvas>
+      </div>
+
+      <!-- Top Entidades -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title">Top 10 Entidades por Volumen</h3>
+        </div>
+        <canvas id="chartEntidades"></canvas>
+      </div>
+    </div>
+
+    <!-- Últimos Planes -->
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">Últimos Planes Registrados</h3>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Referencia</th>
+              <th>Cliente</th>
+              <th>Estado</th>
+              <th>Deuda Total</th>
+              <th>Ahorro</th>
+              <th>Comisiones</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaPlanes">
+            <tr>
+              <td colspan="8" class="text-center text-muted">Cargando planes...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Dashboard Manager
+    class DashboardManager {
+      constructor() {
+        this.planes = [];
+        this.charts = {};
+        this.filtros = {
+          desde: new Date(),
+          hasta: new Date()
+        };
+        this.init();
+      }
+
+      async init() {
+        // Establecer fechas por defecto (último mes)
+        const hoy = new Date();
+        const hace30Dias = new Date(hoy);
+        hace30Dias.setDate(hace30Dias.getDate() - 30);
+        
+        document.getElementById('fechaDesde').value = hace30Dias.toISOString().split('T')[0];
+        document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
+        
+        // Cargar datos
+        await this.cargarDatos();
+        
+        // Renderizar
+        this.renderizarKPIs();
+        this.renderizarCharts();
+        this.renderizarTabla();
+      }
+
+      async cargarDatos() {
+        try {
+          // En producción, esto vendría de la API
+          // Por ahora, generamos datos de ejemplo
+          this.planes = this.generarDatosEjemplo();
+        } catch (error) {
+          console.error('Error cargando datos:', error);
+        }
+      }
+
+      generarDatosEjemplo() {
+        const estados = ['simulado', 'contratado', 'en_negociacion', 'aprobado', 'en_pago', 'completado', 'cancelado'];
+        const productos = ['Micropréstamo', 'Tarjeta de Crédito', 'Préstamo Personal', 'Préstamo Hipotecario'];
+        const entidades = ['BBVA', 'CaixaBank', 'Santander', 'Sabadell', 'Bankinter'];
+        
+        const planes = [];
+        const hoy = new Date();
+        
+        // Generar 150 planes de los últimos 6 meses
+        for (let i = 0; i < 150; i++) {
+          const fechaBase = new Date(hoy);
+          fechaBase.setDate(fechaBase.getDate() - Math.floor(Math.random() * 180));
+          
+          const totalDeuda = Math.floor(Math.random() * 50000) + 5000;
+          const descuento = Math.random() * 0.4 + 0.1; // 10% - 50%
+          const ahorro = totalDeuda * descuento;
+          const comision = Math.max(ahorro * 0.2, 500);
+          
+          // Generar deudas del plan
+          const numDeudas = Math.floor(Math.random() * 5) + 1;
+          const deudas = [];
+          for (let j = 0; j < numDeudas; j++) {
+            deudas.push({
+              producto: productos[Math.floor(Math.random() * productos.length)],
+              entidad: entidades[Math.floor(Math.random() * entidades.length)],
+              importe: totalDeuda / numDeudas
+            });
+          }
+          
+          planes.push({
+            referencia: `DMD-2025${String(fechaBase.getMonth() + 1).padStart(2, '0')}${String(fechaBase.getDate()).padStart(2, '0')}-${String(i).padStart(4, '0')}`,
+            cliente: {
+              nombre: `Cliente ${i + 1}`,
+              dni: `${Math.floor(Math.random() * 90000000) + 10000000}A`
+            },
+            estado: estados[Math.floor(Math.random() * estados.length)],
+            fecha: fechaBase.toISOString(),
+            totalImporte: totalDeuda,
+            ahorro: ahorro,
+            comisiones: {
+              total: comision
+            },
+            deudas: deudas
+          });
+        }
+        
+        return planes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      }
+
+      renderizarKPIs() {
+        const kpis = this.calcularKPIs();
+        const container = document.getElementById('kpiGrid');
+        
+        container.innerHTML = `
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Planes Creados Hoy</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${kpis.planesHoy}</p>
+            <div class="kpi-change positive">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              +${kpis.cambioHoy}% vs ayer
+            </div>
+          </div>
+
+          <div class="kpi-card success">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Planes Esta Semana</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${kpis.planesSemana}</p>
+            <div class="kpi-change positive">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              +${kpis.cambioSemana}% vs semana anterior
+            </div>
+          </div>
+
+          <div class="kpi-card info">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Planes Este Mes</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 13.7a9 9 0 1 1-6.3-6.3"></path>
+                  <path d="M21 4v5h-5"></path>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${kpis.planesMes}</p>
+            <div class="kpi-change positive">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              +${kpis.cambioMes}% vs mes anterior
+            </div>
+          </div>
+
+          <div class="kpi-card warning">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Tasa de Conversión</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20V10"></path>
+                  <path d="M18 20V4"></path>
+                  <path d="M6 20v-4"></path>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${kpis.tasaConversion}%</p>
+            <div class="kpi-change">
+              Simulados → Contratados
+            </div>
+          </div>
+
+          <div class="kpi-card success">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Ahorro Total Generado</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="1" x2="12" y2="23"></line>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${this.formatearMoneda(kpis.ahorroTotal)}</p>
+            <div class="kpi-change positive">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              +${kpis.cambioAhorro}% este mes
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <h3 class="kpi-title">Comisiones Generadas</h3>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+              </div>
+            </div>
+            <p class="kpi-value">${this.formatearMoneda(kpis.comisionesTotal)}</p>
+            <div class="kpi-change positive">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              Media: ${this.formatearMoneda(kpis.comisionMedia)}/plan
+            </div>
+          </div>
+        `;
+      }
+
+      calcularKPIs() {
+        const hoy = new Date();
+        const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+        const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        
+        const planesHoy = this.planes.filter(p => new Date(p.fecha) >= inicioHoy).length;
+        const planesSemana = this.planes.filter(p => new Date(p.fecha) >= inicioSemana).length;
+        const planesMes = this.planes.filter(p => new Date(p.fecha) >= inicioMes).length;
+        
+        const simulados = this.planes.filter(p => p.estado === 'simulado').length;
+        const contratados = this.planes.filter(p => ['contratado', 'aprobado', 'en_pago', 'completado'].includes(p.estado)).length;
+        const tasaConversion = simulados > 0 ? Math.round((contratados / simulados) * 100) : 0;
+        
+        const ahorroTotal = this.planes.reduce((sum, p) => sum + (p.ahorro || 0), 0);
+        const comisionesTotal = this.planes.reduce((sum, p) => sum + (p.comisiones?.total || 0), 0);
+        const comisionMedia = this.planes.length > 0 ? comisionesTotal / this.planes.length : 0;
+        
+        return {
+          planesHoy,
+          planesSemana,
+          planesMes,
+          tasaConversion,
+          ahorroTotal,
+          comisionesTotal,
+          comisionMedia,
+          cambioHoy: Math.floor(Math.random() * 30) + 10,
+          cambioSemana: Math.floor(Math.random() * 25) + 5,
+          cambioMes: Math.floor(Math.random() * 20) + 15,
+          cambioAhorro: Math.floor(Math.random() * 35) + 10
+        };
+      }
+
+      renderizarCharts() {
+        this.renderizarEvolucionMensual();
+        this.renderizarDistribucionTipos();
+        this.renderizarFunnelConversion();
+        this.renderizarTopEntidades();
+      }
+
+      renderizarEvolucionMensual() {
+        const ctx = document.getElementById('chartEvolucion').getContext('2d');
+        
+        // Agrupar por mes
+        const planesPorMes = {};
+        this.planes.forEach(plan => {
+          const fecha = new Date(plan.fecha);
+          const mesKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!planesPorMes[mesKey]) {
+            planesPorMes[mesKey] = {
+              planes: 0,
+              ahorro: 0,
+              comisiones: 0
+            };
+          }
+          
+          planesPorMes[mesKey].planes++;
+          planesPorMes[mesKey].ahorro += plan.ahorro || 0;
+          planesPorMes[mesKey].comisiones += plan.comisiones?.total || 0;
+        });
+        
+        const meses = Object.keys(planesPorMes).sort().slice(-6); // Últimos 6 meses
+        const labels = meses.map(m => {
+          const [año, mes] = m.split('-');
+          return new Date(año, mes - 1).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+        });
+        
+        this.charts.evolucion = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Planes',
+                data: meses.map(m => planesPorMes[m].planes),
+                borderColor: '#0071e3',
+                backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y-planes'
+              },
+              {
+                label: 'Ahorro Generado',
+                data: meses.map(m => planesPorMes[m].ahorro),
+                borderColor: '#34c759',
+                backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y-moneda'
+              },
+              {
+                label: 'Comisiones',
+                data: meses.map(m => planesPorMes[m].comisiones),
+                borderColor: '#ff9500',
+                backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y-moneda'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false
+            },
+            scales: {
+              'y-planes': {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                  display: true,
+                  text: 'Número de Planes'
+                }
+              },
+              'y-moneda': {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                  display: true,
+                  text: 'Importe (€)'
+                },
+                ticks: {
+                  callback: function(value) {
+                    return new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0
+                    }).format(value);
+                  }
+                },
+                grid: {
+                  drawOnChartArea: false
+                }
+              }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) label += ': ';
+                    
+                    if (context.datasetIndex === 0) {
+                      label += context.parsed.y + ' planes';
+                    } else {
+                      label += new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR'
+                      }).format(context.parsed.y);
+                    }
+                    return label;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderizarDistribucionTipos() {
+        const ctx = document.getElementById('chartDistribucion').getContext('2d');
+        
+        // Contar por tipo de producto
+        const productoCount = {};
+        this.planes.forEach(plan => {
+          plan.deudas?.forEach(deuda => {
+            const producto = deuda.producto || 'Otros';
+            productoCount[producto] = (productoCount[producto] || 0) + 1;
+          });
+        });
+        
+        const colores = {
+          'Micropréstamo': '#ff9500',
+          'Tarjeta de Crédito': '#af52de',
+          'Préstamo Personal': '#0a84ff',
+          'Préstamo Hipotecario': '#30d158',
+          'Otros': '#8e8e93'
+        };
+        
+        this.charts.distribucion = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(productoCount),
+            datasets: [{
+              data: Object.values(productoCount),
+              backgroundColor: Object.keys(productoCount).map(p => colores[p] || '#8e8e93'),
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  padding: 15,
+                  usePointStyle: true
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                    return `${context.label}: ${context.parsed} (${percentage}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderizarFunnelConversion() {
+        const ctx = document.getElementById('chartFunnel').getContext('2d');
+        
+        // Contar por estado
+        const estadoCounts = {
+          'Simulados': this.planes.filter(p => p.estado === 'simulado').length,
+          'Contratados': this.planes.filter(p => p.estado === 'contratado').length,
+          'En Negociación': this.planes.filter(p => p.estado === 'en_negociacion').length,
+          'Aprobados': this.planes.filter(p => p.estado === 'aprobado').length,
+          'En Pago': this.planes.filter(p => p.estado === 'en_pago').length,
+          'Completados': this.planes.filter(p => p.estado === 'completado').length
+        };
+        
+        this.charts.funnel = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(estadoCounts),
+            datasets: [{
+              label: 'Planes',
+              data: Object.values(estadoCounts),
+              backgroundColor: [
+                'rgba(0, 113, 227, 0.8)',
+                'rgba(52, 199, 89, 0.8)',
+                'rgba(255, 149, 0, 0.8)',
+                'rgba(52, 199, 89, 0.6)',
+                'rgba(175, 82, 222, 0.8)',
+                'rgba(46, 125, 50, 0.8)'
+              ],
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 10
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const total = context.dataset.data[0]; // Simulados es el total
+                    const percentage = ((context.parsed.x / total) * 100).toFixed(1);
+                    return `${context.parsed.x} planes (${percentage}% del total)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderizarTopEntidades() {
+        const ctx = document.getElementById('chartEntidades').getContext('2d');
+        
+        // Contar por entidad
+        const entidadVolumen = {};
+        this.planes.forEach(plan => {
+          plan.deudas?.forEach(deuda => {
+            const entidad = deuda.entidad || 'Otras';
+            if (!entidadVolumen[entidad]) {
+              entidadVolumen[entidad] = {
+                count: 0,
+                volumen: 0
+              };
+            }
+            entidadVolumen[entidad].count++;
+            entidadVolumen[entidad].volumen += deuda.importe || 0;
+          });
+        });
+        
+        // Ordenar por volumen y tomar top 10
+        const topEntidades = Object.entries(entidadVolumen)
+          .sort((a, b) => b[1].volumen - a[1].volumen)
+          .slice(0, 10);
+        
+        this.charts.entidades = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: topEntidades.map(e => e[0]),
+            datasets: [{
+              label: 'Volumen de Deuda',
+              data: topEntidades.map(e => e[1].volumen),
+              backgroundColor: 'rgba(0, 113, 227, 0.8)',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0
+                    }).format(value);
+                  }
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR'
+                    }).format(context.parsed.y);
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderizarTabla() {
+        const tbody = document.getElementById('tablaPlanes');
+        const planesRecientes = this.planes.slice(0, 10);
+        
+        tbody.innerHTML = planesRecientes.map(plan => `
+          <tr>
+            <td class="font-mono">${plan.referencia}</td>
+            <td>${plan.cliente.nombre}</td>
+            <td>
+              <span class="estado-badge estado-${plan.estado}">
+                ${this.traducirEstado(plan.estado)}
+              </span>
+            </td>
+            <td class="text-right">${this.formatearMoneda(plan.totalImporte)}</td>
+            <td class="text-right">${this.formatearMoneda(plan.ahorro)}</td>
+            <td class="text-right">${this.formatearMoneda(plan.comisiones?.total || 0)}</td>
+            <td>${new Date(plan.fecha).toLocaleDateString('es-ES')}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" 
+                      onclick="dashboard.verDetallePlan('${plan.referencia}')">
+                Ver
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      traducirEstado(estado) {
+        const traducciones = {
+          'simulado': 'Simulado',
+          'contratado': 'Contratado',
+          'en_negociacion': 'En Negociación',
+          'aprobado': 'Aprobado',
+          'en_pago': 'En Pago',
+          'completado': 'Completado',
+          'cancelado': 'Cancelado'
+        };
+        return traducciones[estado] || estado;
+      }
+
+      formatearMoneda(valor) {
+        return new Intl.NumberFormat('es-ES', {
+          style: 'currency',
+          currency: 'EUR'
+        }).format(valor || 0);
+      }
+
+      cambiarVistaChart(chart, tipo) {
+        if (this.charts[chart]) {
+          this.charts[chart].config.type = tipo;
+          this.charts[chart].update();
+        }
+      }
+
+      setRangoRapido(rango) {
+        const hoy = new Date();
+        let desde = new Date();
+        
+        switch(rango) {
+          case 'hoy':
+            desde = new Date(hoy);
+            break;
+          case 'semana':
+            desde.setDate(hoy.getDate() - 7);
+            break;
+          case 'mes':
+            desde.setMonth(hoy.getMonth() - 1);
+            break;
+          case 'año':
+            desde.setFullYear(hoy.getFullYear() - 1);
+            break;
+        }
+        
+        document.getElementById('fechaDesde').value = desde.toISOString().split('T')[0];
+        document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
+        
+        // Actualizar botones activos
+        document.querySelectorAll('.quick-range-btn').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        this.aplicarFiltros();
+      }
+
+      aplicarFiltros() {
+        const desde = new Date(document.getElementById('fechaDesde').value);
+        const hasta = new Date(document.getElementById('fechaHasta').value);
+        
+        // Filtrar planes
+        const planesFiltrados = this.planes.filter(p => {
+          const fecha = new Date(p.fecha);
+          return fecha >= desde && fecha <= hasta;
+        });
+        
+        // Actualizar visualizaciones con datos filtrados
+        // Por ahora solo mostramos notificación
+        const mensaje = `Mostrando ${planesFiltrados.length} planes del ${desde.toLocaleDateString()} al ${hasta.toLocaleDateString()}`;
+        this.mostrarNotificacion(mensaje, 'info');
+      }
+
+      verDetallePlan(referencia) {
+        // Redirigir al simulador con el plan cargado
+        window.location.href = `index.html?plan=${referencia}`;
+      }
+
+      async exportarDatos() {
+        // Generar CSV con los datos actuales
+        const headers = ['Referencia', 'Cliente', 'DNI', 'Estado', 'Fecha', 'Deuda Total', 'Ahorro', 'Comisiones'];
+        const rows = this.planes.map(p => [
+          p.referencia,
+          p.cliente.nombre,
+          p.cliente.dni,
+          this.traducirEstado(p.estado),
+          new Date(p.fecha).toLocaleDateString('es-ES'),
+          p.totalImporte,
+          p.ahorro,
+          p.comisiones?.total || 0
+        ]);
+        
+        let csv = headers.join(',') + '\n';
+        rows.forEach(row => {
+          csv += row.join(',') + '\n';
+        });
+        
+        // Descargar
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dashboard_dmd_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        
+        this.mostrarNotificacion('Datos exportados correctamente', 'success');
+      }
+
+      mostrarNotificacion(mensaje, tipo = 'info') {
+        // Implementación simple de notificación
+        console.log(`[${tipo}] ${mensaje}`);
+      }
+    }
+
+    // Inicializar dashboard
+    const dashboard = new DashboardManager();
+  </script>
+</body>
+</html>
