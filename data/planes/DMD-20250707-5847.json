@@ -1,0 +1,47 @@
+{
+  "referencia": "DMD-20250707-5847",
+  "fecha": "2025-07-07T21:51:35.743Z",
+  "cliente": {
+    "nombre": "Ramon Arias Abreu",
+    "dni": "53849973G",
+    "email": "ramonaris28@gmail.com"
+  },
+  "numCuotas": 15,
+  "deudas": [
+    {
+      "contrato": "12584",
+      "producto": "Micropréstamo",
+      "entidad": "BBVA",
+      "importe": 252,
+      "descuento": 25,
+      "importeConDescuento": 189
+    },
+    {
+      "contrato": "12585",
+      "producto": "Micropréstamo",
+      "entidad": "BBVA",
+      "importe": 852,
+      "descuento": 30,
+      "importeConDescuento": 596.4
+    },
+    {
+      "contrato": "12585",
+      "producto": "Micropréstamo",
+      "entidad": "BBVA",
+      "importe": 3652,
+      "descuento": 50,
+      "importeConDescuento": 1826
+    }
+  ],
+  "totalImporte": 4756,
+  "totalConDescuento": 2611.4,
+  "ahorro": 2144.6,
+  "descuentoMedio": 45.092514718250634,
+  "cuotaMensual": 174.09333333333333,
+  "comisiones": {
+    "base": 500,
+    "iva": 105,
+    "total": 605,
+    "porcentaje": 20
+  }
+}
