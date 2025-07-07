@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Reestructuración de Deuda - DMD Asesores</title>
+  <meta name="description" content="Calcula y optimiza planes de reestructuración de deuda con DMD Asesores">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #0071e3;
+      --primary-hover: #0051a3;
+      --success: #34c759;
+      --danger: #ff3b30;
+      --warning: #ffcc00;
+      --background: #f5f5f7;
+      --surface: #ffffff;
+      --text-primary: #1d1d1f;
+      --text-secondary: #666;
+      --border: #e5e5ea;
+      --shadow: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+      --radius: 12px;
+      --radius-lg: 18px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+      background: var(--background); 
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    body { padding: 20px; }
+
+    /* Loading Screen */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--background);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      transition: opacity 0.3s ease;
+    }
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Status Bar */
+    .status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      background: var(--success);
+      color: white;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    .status-badge.offline {
+      background: var(--danger);
+    }
+
+    .main-wrapper {
+      margin-top: 60px;
+    }
+
+    /* Componentes Base */
+    .contenedor-simulador {
+      max-width: 1200px;
+      margin: 0 auto 40px;
+      background: var(--surface);
+      padding: 40px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .header-simulador {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .logo {
+      max-width: 120px;
+      height: auto;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 1rem;
+      font-weight: 600;
+    }
+
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+
+    /* Formulario */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .campo label {
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .campo input,
+    .campo select {
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background: var(--surface);
+    }
+
+    .campo input:focus,
+    .campo select:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+    }
+
+    .campo input.error {
+      border-color: var(--danger);
+    }
+
+    .campo .help-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Botones */
+    .btn {
+      cursor: pointer;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: none;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:active::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primario {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primario:hover:not(:disabled) {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+    }
+
+    .btn-secundario {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-secundario:hover:not(:disabled) {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #2ca548;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Tabla */
+    .tabla-deudas {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 2rem;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .tabla-deudas h2 {
+      background: var(--primary);
+      color: white;
+      margin: 0;
+      padding: 1rem 1.5rem;
+      font-size: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tabla-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f8f9fa;
+    }
+
+    th {
+      text-align: left;
+      font-weight: 600;
+      padding: 1rem;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s;
+    }
+
+    tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .tabla-deudas input,
+    .tabla-deudas select {
+      width: 100%;
+      min-width: 100px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .tabla-deudas input[type="number"] {
+      text-align: right;
+    }
+
+    .importe-descuento {
+      font-weight: 600;
+      color: var(--success);
+      text-align: right;
+    }
+
+    /* Resultados */
+    .resultado-final {
+      margin-top: 2rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, #f2f8ff 0%, #e8f4fd 100%);
+      border-radius: var(--radius-lg);
+      border: 1px solid #dae7fe;
+      display: none;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-content {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 800px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      animation: modalSlideUp 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalSlideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Lista de planes */
+    .search-box {
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      margin-bottom: 1rem;
+      font-size: 16px;
+    }
+
+    .planes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .plan-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      transition: var(--transition);
+      cursor: pointer;
+      background: white;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+      border-color: var(--primary);
+    }
+
+    .plan-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1rem;
+    }
+
+    .plan-card-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .plan-card-ref {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .plan-card-date {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .plan-card-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .plan-stat {
+      text-align: center;
+    }
+
+    .plan-stat-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .plan-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Notificaciones */
+    .notificacion {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      padding: 16px 24px;
+      border-radius: var(--radius);
+      font-weight: 500;
+      color: white;
+      z-index: 9999;
+      animation: slideIn 0.3s ease-out;
+      box-shadow: var(--shadow-hover);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      max-width: 400px;
+    }
+
+    .notificacion.info { background: var(--primary); }
+    .notificacion.success { background: var(--success); }
+    .notificacion.error { background: var(--danger); }
+    .notificacion.warning { background: var(--warning); color: var(--text-primary); }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .contenedor-simulador {
+        padding: 1.5rem;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .planes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .status-bar {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .main-wrapper {
+        margin-top: 100px;
+      }
+
+      .notificacion {
+        left: 20px;
+        right: 20px;
+        top: 120px;
+        max-width: none;
+      }
+    }
+
+    /* Utilidades */
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .mt-1 { margin-top: 0.5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 1.5rem; }
+    .d-none { display: none; }
+    .d-flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .align-center { align-items: center; }
+    .gap-1 { gap: 0.5rem; }
+    .gap-2 { gap: 1rem; }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Cargando configuración...</p>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-info">
+      <div class="status-badge" id="statusBadge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span id="statusText">Conectado</span>
+      </div>
+      <span id="lastUpdate" style="color: var(--text-secondary); font-size: 0.75rem;"></span>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app.showInfo()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        Info
+      </button>
+      <button class="btn btn-primario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app.syncData()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Sincronizar
+      </button>
+    </div>
+  </div>
+
+  <div class="main-wrapper">
+    <div class="contenedor-simulador">
+      <div class="header-simulador">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Logo_DMD_Asesores.png/320px-Logo_DMD_Asesores.png" 
+             alt="Logo DMD Asesores" 
+             class="logo">
+        <h1>Simulador de Reestructuración de Deuda</h1>
+        <p style="color: var(--text-secondary); margin-top: -0.5rem;">
+          Sistema colaborativo con sincronización en GitHub
+        </p>
+      </div>
+
+      <form id="formularioSimulador">
+        <div class="form-grid">
+          <div class="campo">
+            <label for="nombreDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Nombre del Cliente
+            </label>
+            <input type="text" id="nombreDeudor" required placeholder="Ej: Juan Pérez García">
+            <span class="help-text">Nombre completo del deudor</span>
+          </div>
+
+          <div class="campo">
+            <label for="dniDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+              DNI/NIE
+            </label>
+            <input type="text" id="dniDeudor" required placeholder="Ej: 12345678A" pattern="[0-9]{8}[A-Za-z]|[XYZ][0-9]{7}[A-Za-z]">
+            <span class="help-text">Documento de identidad</span>
+          </div>
+
+          <div class="campo">
+            <label for="emailDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Email
+            </label>
+            <input type="email" id="emailDeudor" placeholder="correo@ejemplo.com">
+            <span class="help-text">Para enviar el plan por correo</span>
+          </div>
+
+          <div class="campo">
+            <label for="numCuotas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Número de cuotas
+            </label>
+            <input type="number" id="numCuotas" min="1" max="360" value="12" required>
+            <span class="help-text">Entre 1 y 360 meses</span>
+          </div>
+        </div>
+
+        <div class="tabla-deudas">
+          <h2>
+            <span>Deudas a Incluir</span>
+            <span id="totalDeudasCount" style="font-size: 0.9rem; font-weight: normal;">0 deudas</span>
+          </h2>
+          <div class="tabla-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nº Contrato</th>
+                  <th>Producto</th>
+                  <th>Entidad</th>
+                  <th>Importe (€)</th>
+                  <th>% Desc.</th>
+                  <th>Importe Final</th>
+                  <th style="width: 50px;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaDeudas"></tbody>
+              <tfoot>
+                <tr style="background: #f8f9fa;">
+                  <td colspan="3" style="text-align: right; font-weight: 600;">Totales:</td>
+                  <td style="text-align: right; font-weight: 600;" id="totalImporte">0,00 €</td>
+                  <td style="text-align: center; font-weight: 600;" id="totalDescuentoMedio">0%</td>
+                  <td style="text-align: right; font-weight: 600; color: var(--success);" id="totalImporteFinal">0,00 €</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div style="padding: 1rem;">
+            <button type="button" class="btn btn-secundario" id="btnAgregarFila">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Añadir Deuda
+            </button>
+            <button type="button" class="btn btn-secundario" id="btnCargarPlan">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Cargar Plan Guardado
+            </button>
+          </div>
+        </div>
+
+        <div class="d-flex justify-between align-center">
+          <button type="button" class="btn btn-secundario" id="btnReAnalizar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Reiniciar
+          </button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-secundario" id="btnGuardarBorrador">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Guardar Borrador
+            </button>
+            <button type="submit" class="btn btn-primario" id="btnCalcular">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              Calcular y Guardar Plan
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="resultado-final" id="resultadoFinal">
+        <h3>Plan Calculado Correctamente ✓</h3>
+        <p>El plan ha sido guardado en el repositorio. Puedes descargarlo en PDF o compartirlo.</p>
+        <div class="d-flex gap-1 mt-2">
+          <button class="btn btn-success" id="btnDescargarPDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Descargar PDF
+          </button>
+          <button class="btn btn-secundario" id="btnVerEnGitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+            Ver en GitHub
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para cargar planes -->
+  <div id="modalPlanes" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Planes Guardados</h3>
+        <button type="button" class="btn btn-icon" onclick="app.cerrarModalPlanes()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="buscarPlan" placeholder="Buscar por nombre, DNI o referencia..." class="search-box">
+        <div id="listaPlanes" class="planes-grid">
+          <!-- Se llenará dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== CONFIGURACIÓN GLOBAL ====================
+    const CONFIG = {
+      // URLs del sistema
+      API_URL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:8888/.netlify/functions' 
+        : '/.netlify/functions',
+      GITHUB_REPO: 'tu-usuario/dmd-simulador', // Cambiar por tu repo
+      
+      // Valores por defecto (se actualizarán desde los archivos JSON)
+      ENTIDADES: [],
+      TIPOS_PRODUCTO: [],
+      MAX_DESCUENTO_TOTAL: 95,
+      
+      // Formato de moneda
+      FORMATO_MONEDA: {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }
+    };
+
+    // ==================== APLICACIÓN PRINCIPAL ====================
+    class DMDApp {
+      constructor() {
+        this.planes = [];
+        this.configuracion = {};
+        this.online = navigator.onLine;
+        this.initApp();
+      }
+
+      async initApp() {
+        try {
+          // Cargar configuración
+          await this.loadConfiguration();
+          
+          // Inicializar eventos
+          this.initEventListeners();
+          
+          // Actualizar estado
+          this.updateConnectionStatus();
+          
+          // Ocultar pantalla de carga
+          document.getElementById('loadingScreen').style.opacity = '0';
+          setTimeout(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+          }, 300);
+          
+          // Cargar planes si estamos online
+          if (this.online) {
+            await this.loadPlanes();
+          }
+          
+          // Inicializar tabla con primera fila
+          this.agregarFilaDeuda();
+          
+        } catch (error) {
+          console.error('Error iniciando aplicación:', error);
+          this.mostrarNotificacion('Error al cargar la configuración', 'error');
+        }
+      }
+
+      async loadConfiguration() {
+        try {
+          // Cargar archivos de configuración
+          const [entidades, productos, configuracion] = await Promise.all([
+            fetch('/config/entidades.json').then(r => r.json()),
+            fetch('/config/productos.json').then(r => r.json()),
+            fetch('/config/configuracion.json').then(r => r.json())
+          ]);
+
+          // Actualizar CONFIG global
+          CONFIG.ENTIDADES = entidades.entidades
+            .filter(e => e.activo)
+            .map(e => e.nombre);
+          
+          CONFIG.TIPOS_PRODUCTO = productos.productos
+            .filter(p => p.activo);
+          
+          this.configuracion = configuracion;
+          
+          console.log('Configuración cargada:', {
+            entidades: CONFIG.ENTIDADES.length,
+            productos: CONFIG.TIPOS_PRODUCTO.length
+          });
+          
+        } catch (error) {
+          console.warn('Usando configuración por defecto:', error);
+          
+          // Configuración por defecto si falla la carga
+          CONFIG.ENTIDADES = [
+            "BBVA", "CaixaBank", "Santander", "Sabadell", "Bankinter"
+          ];
+          
+          CONFIG.TIPOS_PRODUCTO = [
+            { tipo: "Micropréstamo", maxDescuento: 50, color: "#ff9500" },
+            { tipo: "Tarjeta de Crédito", maxDescuento: 25, color: "#af52de" },
+            { tipo: "Préstamo Personal", maxDescuento: 20, color: "#0a84ff" }
+          ];
+        }
+      }
+
+      initEventListeners() {
+        // Formulario
+        document.getElementById('formularioSimulador').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.calcularYGuardarPlan();
+        });
+
+        // Botones
+        document.getElementById('btnAgregarFila').addEventListener('click', () => this.agregarFilaDeuda());
+        document.getElementById('btnCargarPlan').addEventListener('click', () => this.mostrarModalPlanes());
+        document.getElementById('btnReAnalizar').addEventListener('click', () => this.reiniciarFormulario());
+        document.getElementById('btnGuardarBorrador').addEventListener('click', () => this.guardarBorrador());
+        document.getElementById('btnDescargarPDF').addEventListener('click', () => this.descargarPDF());
+        document.getElementById('btnVerEnGitHub').addEventListener('click', () => this.verEnGitHub());
+
+        // Búsqueda en modal
+        document.getElementById('buscarPlan').addEventListener('input', (e) => this.filtrarPlanes(e.target.value));
+
+        // Estado de conexión
+        window.addEventListener('online', () => this.updateConnectionStatus(true));
+        window.addEventListener('offline', () => this.updateConnectionStatus(false));
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modalPlanes').addEventListener('click', (e) => {
+          if (e.target.id === 'modalPlanes') {
+            this.cerrarModalPlanes();
+          }
+        });
+      }
+
+      // ==================== GESTIÓN DE DEUDAS ====================
+      agregarFilaDeuda(datos = {}) {
+        const tbody = document.getElementById('tablaDeudas');
+        const fila = document.createElement('tr');
+        
+        fila.innerHTML = `
+          <td>
+            <input type="text" class="contrato" value="${datos.contrato || ''}" 
+                   placeholder="Ej: 1234567890" required>
+          </td>
+          <td>
+            <select class="producto" required>
+              ${CONFIG.TIPOS_PRODUCTO.map(p => 
+                `<option value="${p.tipo}">${p.tipo}</option>`
+              ).join('')}
+            </select>
+          </td>
+          <td>
+            <select class="entidad" required>
+              ${CONFIG.ENTIDADES.map(e => 
+                `<option value="${e}">${e}</option>`
+              ).join('')}
+            </select>
+          </td>
+          <td>
+            <input type="number" class="importe" min="0" step="0.01" 
+                   value="${datos.importe || ''}" placeholder="0,00" required>
+          </td>
+          <td>
+            <input type="number" class="descuento" min="0" max="100" 
+                   value="${datos.descuento || ''}" placeholder="0" required>
+          </td>
+          <td class="importe-descuento text-right">0,00 €</td>
+          <td>
+            <button type="button" class="btn btn-icon btn-danger" title="Eliminar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </td>
+        `;
+
+        // Establecer valores si se proporcionaron
+        if (datos.producto) fila.querySelector('.producto').value = datos.producto;
+        if (datos.entidad) fila.querySelector('.entidad').value = datos.entidad;
+
+        // Event listeners
+        const inputs = fila.querySelectorAll('input, select');
+        inputs.forEach(input => {
+          input.addEventListener('input', () => this.actualizarFila(fila));
+          input.addEventListener('change', () => this.actualizarFila(fila));
+        });
+
+        fila.querySelector('.btn-danger').addEventListener('click', () => {
+          if (tbody.children.length > 1) {
+            fila.remove();
+            this.actualizarTotales();
+          } else {
+            this.mostrarNotificacion('Debe mantener al menos una deuda', 'warning');
+          }
+        });
+
+        tbody.appendChild(fila);
+        this.actualizarFila(fila);
+      }
+
+      actualizarFila(fila) {
+        const producto = fila.querySelector('.producto').value;
+        const importe = parseFloat(fila.querySelector('.importe').value) || 0;
+        let descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+        
+        // Validar descuento máximo
+        const tipoProducto = CONFIG.TIPOS_PRODUCTO.find(tp => tp.tipo === producto);
+        const maxDescuento = tipoProducto ? tipoProducto.maxDescuento : 100;
+        
+        if (descuento > maxDescuento) {
+          descuento = maxDescuento;
+          fila.querySelector('.descuento').value = maxDescuento;
+          this.mostrarNotificacion(
+            `Descuento máximo para ${producto}: ${maxDescuento}%`, 
+            'warning'
+          );
+        }
+        
+        const importeConDescuento = importe * (1 - descuento / 100);
+        fila.querySelector('.importe-descuento').textContent = this.formatearMoneda(importeConDescuento);
+        
+        this.actualizarTotales();
+      }
+
+      actualizarTotales() {
+        const filas = document.querySelectorAll('#tablaDeudas tr');
+        let totalImporte = 0;
+        let totalImporteFinal = 0;
+        
+        filas.forEach(fila => {
+          const importe = parseFloat(fila.querySelector('.importe').value) || 0;
+          const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+          const importeFinal = importe * (1 - descuento / 100);
+          
+          totalImporte += importe;
+          totalImporteFinal += importeFinal;
+        });
+        
+        const descuentoMedio = totalImporte > 0 
+          ? ((totalImporte - totalImporteFinal) / totalImporte) * 100 
+          : 0;
+        
+        document.getElementById('totalImporte').textContent = this.formatearMoneda(totalImporte);
+        document.getElementById('totalImporteFinal').textContent = this.formatearMoneda(totalImporteFinal);
+        document.getElementById('totalDescuentoMedio').textContent = `${descuentoMedio.toFixed(1)}%`;
+        document.getElementById('totalDeudasCount').textContent = 
+          `${filas.length} deuda${filas.length !== 1 ? 's' : ''}`;
+      }
+
+      // ==================== CÁLCULO Y GUARDADO ====================
+      async calcularYGuardarPlan() {
+        try {
+          // Validar formulario
+          const datosCliente = this.obtenerDatosCliente();
+          if (!datosCliente) return;
+
+          const deudas = this.obtenerDeudas();
+          if (!deudas) return;
+
+          const numCuotas = parseInt(document.getElementById('numCuotas').value);
+
+          // Calcular totales
+          const totalImporte = deudas.reduce((sum, d) => sum + d.importe, 0);
+          const totalConDescuento = deudas.reduce((sum, d) => sum + d.importeConDescuento, 0);
+          const ahorro = totalImporte - totalConDescuento;
+          const descuentoMedio = (ahorro / totalImporte) * 100;
+          const cuotaMensual = totalConDescuento / numCuotas;
+
+          // Validar descuento total
+          if (descuentoMedio > CONFIG.MAX_DESCUENTO_TOTAL) {
+            this.mostrarNotificacion(
+              `El descuento total no puede superar el ${CONFIG.MAX_DESCUENTO_TOTAL}%`, 
+              'error'
+            );
+            return;
+          }
+
+          // Crear objeto del plan
+          const plan = {
+            referencia: this.generarReferencia(),
+            fecha: new Date().toISOString(),
+            cliente: datosCliente,
+            numCuotas,
+            deudas,
+            totalImporte,
+            totalConDescuento,
+            ahorro,
+            descuentoMedio,
+            cuotaMensual
+          };
+
+          // Guardar plan
+          this.mostrarNotificacion('Guardando plan...', 'info');
+          
+          if (this.online) {
+            await this.guardarPlanEnGitHub(plan);
+          } else {
+            this.guardarPlanLocal(plan);
+            this.mostrarNotificacion('Plan guardado localmente (sin conexión)', 'warning');
+          }
+
+          // Mostrar resultado
+          document.getElementById('resultadoFinal').style.display = 'block';
+          document.getElementById('resultadoFinal').scrollIntoView({ behavior: 'smooth' });
+
+          // Guardar referencia para PDF
+          this.planActual = plan;
+
+        } catch (error) {
+          console.error('Error al guardar plan:', error);
+          this.mostrarNotificacion('Error al guardar el plan', 'error');
+        }
+      }
+
+      obtenerDatosCliente() {
+        const nombre = document.getElementById('nombreDeudor').value.trim();
+        const dni = document.getElementById('dniDeudor').value.trim();
+        const email = document.getElementById('emailDeudor').value.trim();
+
+        if (!nombre) {
+          this.mostrarNotificacion('Por favor, introduce el nombre del cliente', 'error');
+          return null;
+        }
+
+        if (!this.validarDNI(dni)) {
+          this.mostrarNotificacion('Por favor, introduce un DNI/NIE válido', 'error');
+          return null;
+        }
+
+        if (email && !this.validarEmail(email)) {
+          this.mostrarNotificacion('Por favor, introduce un email válido', 'error');
+          return null;
+        }
+
+        return { nombre, dni, email };
+      }
+
+      obtenerDeudas() {
+        const filas = document.querySelectorAll('#tablaDeudas tr');
+        const deudas = [];
+        let hayErrores = false;
+
+        filas.forEach((fila, index) => {
+          const contrato = fila.querySelector('.contrato').value.trim();
+          const producto = fila.querySelector('.producto').value;
+          const entidad = fila.querySelector('.entidad').value;
+          const importe = parseFloat(fila.querySelector('.importe').value) || 0;
+          const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+
+          if (!contrato) {
+            this.mostrarNotificacion(`Falta el número de contrato en la fila ${index + 1}`, 'error');
+            hayErrores = true;
+            return;
+          }
+
+          if (importe <= 0) {
+            this.mostrarNotificacion(`El importe debe ser mayor que 0 en la fila ${index + 1}`, 'error');
+            hayErrores = true;
+            return;
+          }
+
+          deudas.push({
+            contrato,
+            producto,
+            entidad,
+            importe,
+            descuento,
+            importeConDescuento: importe * (1 - descuento / 100)
+          });
+        });
+
+        return hayErrores ? null : deudas;
+      }
+
+      async guardarPlanEnGitHub(plan) {
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/save-plan`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(plan)
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al guardar en GitHub');
+          }
+
+          const result = await response.json();
+          this.mostrarNotificacion('Plan guardado correctamente en GitHub', 'success');
+          
+          // Actualizar lista de planes
+          await this.loadPlanes();
+          
+          return result;
+        } catch (error) {
+          // Si falla, guardar localmente
+          this.guardarPlanLocal(plan);
+          throw error;
+        }
+      }
+
+      guardarPlanLocal(plan) {
+        const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+        planesLocales.push(plan);
+        localStorage.setItem('planes_locales', JSON.stringify(planesLocales));
+        localStorage.setItem('ultimo_plan', JSON.stringify(plan));
+      }
+
+      // ==================== CARGA DE PLANES ====================
+      async loadPlanes() {
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/load-plans`);
+          if (!response.ok) throw new Error('Error al cargar planes');
+          
+          const data = await response.json();
+          this.planes = data.planes || [];
+          
+          // Actualizar última sincronización
+          document.getElementById('lastUpdate').textContent = 
+            `Última actualización: ${new Date().toLocaleTimeString()}`;
+            
+        } catch (error) {
+          console.error('Error cargando planes:', error);
+          // Cargar planes locales si hay
+          const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+          this.planes = planesLocales;
+        }
+      }
+
+      mostrarModalPlanes() {
+        const modal = document.getElementById('modalPlanes');
+        modal.style.display = 'flex';
+        this.renderizarPlanes();
+      }
+
+      cerrarModalPlanes() {
+        document.getElementById('modalPlanes').style.display = 'none';
+        document.getElementById('buscarPlan').value = '';
+      }
+
+      renderizarPlanes(filtro = '') {
+        const container = document.getElementById('listaPlanes');
+        const planesFiltrados = this.planes.filter(plan => {
+          if (!filtro) return true;
+          const busqueda = filtro.toLowerCase();
+          return plan.cliente.nombre.toLowerCase().includes(busqueda) ||
+                 plan.cliente.dni.toLowerCase().includes(busqueda) ||
+                 plan.referencia.toLowerCase().includes(busqueda);
+        });
+
+        if (planesFiltrados.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; grid-column: 1/-1;">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity: 0.3; margin-bottom: 1rem;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <p style="color: var(--text-secondary);">
+                ${filtro ? 'No se encontraron planes con ese criterio' : 'No hay planes guardados'}
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = planesFiltrados.map(plan => {
+          const fecha = new Date(plan.fecha);
+          return `
+            <div class="plan-card" onclick="app.cargarPlan('${plan.referencia}')">
+              <div class="plan-card-header">
+                <div>
+                  <div class="plan-card-title">${plan.cliente.nombre}</div>
+                  <div class="plan-card-ref">${plan.referencia}</div>
+                </div>
+                <div class="plan-card-date">
+                  ${fecha.toLocaleDateString('es-ES')}
+                </div>
+              </div>
+              <div class="plan-card-stats">
+                <div class="plan-stat">
+                  <div class="plan-stat-value">${this.formatearMoneda(plan.totalImporte)}</div>
+                  <div class="plan-stat-label">Deuda Total</div>
+                </div>
+                <div class="plan-stat">
+                  <div class="plan-stat-value">${plan.descuentoMedio.toFixed(1)}%</div>
+                  <div class="plan-stat-label">Descuento</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      filtrarPlanes(busqueda) {
+        this.renderizarPlanes(busqueda);
+      }
+
+      cargarPlan(referencia) {
+        const plan = this.planes.find(p => p.referencia === referencia);
+        if (!plan) return;
+
+        // Cargar datos del cliente
+        document.getElementById('nombreDeudor').value = plan.cliente.nombre;
+        document.getElementById('dniDeudor').value = plan.cliente.dni;
+        document.getElementById('emailDeudor').value = plan.cliente.email || '';
+        document.getElementById('numCuotas').value = plan.numCuotas;
+
+        // Limpiar tabla y cargar deudas
+        document.getElementById('tablaDeudas').innerHTML = '';
+        plan.deudas.forEach(deuda => this.agregarFilaDeuda(deuda));
+
+        // Cerrar modal
+        this.cerrarModalPlanes();
+        this.mostrarNotificacion('Plan cargado correctamente', 'success');
+      }
+
+      // ==================== UTILIDADES ====================
+      formatearMoneda(valor) {
+        return new Intl.NumberFormat("es-ES", CONFIG.FORMATO_MONEDA).format(valor);
+      }
+
+      generarReferencia() {
+        const fecha = new Date();
+        const año = fecha.getFullYear();
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `DMD-${año}${mes}${dia}-${random}`;
+      }
+
+      validarDNI(dni) {
+        const dniRegex = /^[0-9]{8}[A-Za-z]$/;
+        const nieRegex = /^[XYZ][0-9]{7}[A-Za-z]$/;
+        return dniRegex.test(dni) || nieRegex.test(dni);
+      }
+
+      validarEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+      }
+
+      mostrarNotificacion(mensaje, tipo = "info", duracion = 3000) {
+        const iconos = {
+          info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+          success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+          error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+          warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+        };
+
+        const notificacion = document.createElement("div");
+        notificacion.className = `notificacion ${tipo}`;
+        notificacion.innerHTML = `${iconos[tipo]} <span>${mensaje}</span>`;
+        document.body.appendChild(notificacion);
+
+        setTimeout(() => {
+          notificacion.style.animation = "slideOut 0.3s ease-in forwards";
+          setTimeout(() => notificacion.remove(), 300);
+        }, duracion);
+      }
+
+      // ==================== FUNCIONES ADICIONALES ====================
+      reiniciarFormulario() {
+        if (confirm('¿Está seguro de que desea reiniciar el formulario?')) {
+          document.getElementById('formularioSimulador').reset();
+          document.getElementById('tablaDeudas').innerHTML = '';
+          document.getElementById('resultadoFinal').style.display = 'none';
+          this.agregarFilaDeuda();
+          this.actualizarTotales();
+          this.mostrarNotificacion('Formulario reiniciado', 'info');
+        }
+      }
+
+      guardarBorrador() {
+        try {
+          const datosCliente = {
+            nombre: document.getElementById('nombreDeudor').value,
+            dni: document.getElementById('dniDeudor').value,
+            email: document.getElementById('emailDeudor').value
+          };
+
+          const numCuotas = document.getElementById('numCuotas').value;
+          const deudas = [];
+
+          document.querySelectorAll('#tablaDeudas tr').forEach(fila => {
+            deudas.push({
+              contrato: fila.querySelector('.contrato').value,
+              producto: fila.querySelector('.producto').value,
+              entidad: fila.querySelector('.entidad').value,
+              importe: fila.querySelector('.importe').value,
+              descuento: fila.querySelector('.descuento').value
+            });
+          });
+
+          const borrador = {
+            fecha: new Date().toISOString(),
+            cliente: datosCliente,
+            numCuotas,
+            deudas
+          };
+
+          localStorage.setItem('borrador_actual', JSON.stringify(borrador));
+          this.mostrarNotificacion('Borrador guardado correctamente', 'success');
+
+        } catch (error) {
+          console.error('Error al guardar borrador:', error);
+          this.mostrarNotificacion('Error al guardar el borrador', 'error');
+        }
+      }
+
+      async descargarPDF() {
+        if (!this.planActual) {
+          this.mostrarNotificacion('No hay un plan calculado para descargar', 'warning');
+          return;
+        }
+
+        this.mostrarNotificacion('Generando PDF...', 'info');
+
+        try {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const plan = this.planActual;
+
+          // Colores
+          const primaryColor = [0, 113, 227];
+          const textColor = [29, 29, 31];
+
+          // Encabezado
+          pdf.setFillColor(...primaryColor);
+          pdf.rect(0, 0, 210, 40, 'F');
+
+          // Logo/Título
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(24);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('DMD ASESORES', 105, 20, { align: 'center' });
+          pdf.setFontSize(16);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Plan de Reestructuración de Deuda', 105, 30, { align: 'center' });
+
+          // Información del cliente
+          let y = 55;
+          pdf.setTextColor(...textColor);
+          pdf.setFontSize(14);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('INFORMACIÓN DEL CLIENTE', 20, y);
+
+          y += 10;
+          pdf.setFontSize(12);
+          pdf.setFont(undefined, 'normal');
+          pdf.text(`Cliente: ${plan.cliente.nombre}`, 20, y);
+          y += 8;
+          pdf.text(`DNI/NIE: ${plan.cliente.dni}`, 20, y);
+          y += 8;
+          pdf.text(`Email: ${plan.cliente.email || 'No especificado'}`, 20, y);
+          y += 8;
+          pdf.text(`Referencia: ${plan.referencia}`, 20, y);
+          y += 8;
+          pdf.text(`Fecha: ${new Date(plan.fecha).toLocaleDateString('es-ES')}`, 20, y);
+
+          // Resumen financiero
+          y += 15;
+          pdf.setFont(undefined, 'bold');
+          pdf.text('RESUMEN FINANCIERO', 20, y);
+
+          y += 10;
+          pdf.setFont(undefined, 'normal');
+          
+          // Crear tabla de resumen
+          const resumenData = [
+            ['Concepto', 'Importe'],
+            ['Deuda Total', this.formatearMoneda(plan.totalImporte)],
+            ['Total a Pagar', this.formatearMoneda(plan.totalConDescuento)],
+            ['Ahorro Total', this.formatearMoneda(plan.ahorro)],
+            ['Descuento Medio', `${plan.descuentoMedio.toFixed(1)}%`],
+            ['Número de Cuotas', `${plan.numCuotas} meses`],
+            ['Cuota Mensual', this.formatearMoneda(plan.cuotaMensual)]
+          ];
+
+          // Dibujar tabla de resumen
+          const startX = 20;
+          let currentY = y;
+          const cellHeight = 8;
+          const col1Width = 100;
+          const col2Width = 70;
+
+          resumenData.forEach((row, index) => {
+            if (index === 0) {
+              pdf.setFillColor(240, 240, 240);
+              pdf.rect(startX, currentY, col1Width + col2Width, cellHeight, 'F');
+              pdf.setFont(undefined, 'bold');
+            } else {
+              pdf.setFont(undefined, 'normal');
+            }
+
+            pdf.text(row[0], startX + 2, currentY + 6);
+            pdf.text(row[1], startX + col1Width + 2, currentY + 6);
+            
+            currentY += cellHeight;
+          });
+
+          // Detalle de deudas
+          y = currentY + 15;
+          pdf.setFont(undefined, 'bold');
+          pdf.text('DETALLE DE DEUDAS', 20, y);
+          y += 10;
+
+          // Tabla de deudas
+          const headers = ['Contrato', 'Producto', 'Entidad', 'Importe', 'Desc.', 'Final'];
+          const colWidths = [35, 40, 35, 30, 20, 30];
+
+          // Encabezados
+          pdf.setFillColor(...primaryColor);
+          pdf.rect(20, y - 6, 170, 10, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(10);
+
+          let xPos = 20;
+          headers.forEach((header, i) => {
+            pdf.text(header, xPos + 2, y);
+            xPos += colWidths[i];
+          });
+
+          // Datos
+          pdf.setTextColor(...textColor);
+          pdf.setFont(undefined, 'normal');
+          y += 10;
+
+          plan.deudas.forEach((deuda, index) => {
+            if (y > 250) {
+              pdf.addPage();
+              y = 20;
+            }
+
+            xPos = 20;
+            pdf.text(deuda.contrato.substring(0, 15), xPos + 2, y);
+            xPos += colWidths[0];
+            pdf.text(deuda.producto.substring(0, 20), xPos + 2, y);
+            xPos += colWidths[1];
+            pdf.text(deuda.entidad.substring(0, 15), xPos + 2, y);
+            xPos += colWidths[2];
+            pdf.text(this.formatearMoneda(deuda.importe), xPos + colWidths[3] - 2, y, { align: 'right' });
+            xPos += colWidths[3];
+            pdf.text(`${deuda.descuento}%`, xPos + colWidths[4] - 2, y, { align: 'right' });
+            xPos += colWidths[4];
+            pdf.text(this.formatearMoneda(deuda.importeConDescuento), xPos + colWidths[5] - 2, y, { align: 'right' });
+
+            y += 8;
+          });
+
+          // Pie de página
+          pdf.setFontSize(8);
+          pdf.setTextColor(150, 150, 150);
+          pdf.text('Este documento es una estimación. Consulte con un asesor para un análisis personalizado.', 105, 285, { align: 'center' });
+
+          // Guardar PDF
+          pdf.save(`Plan_${plan.referencia}.pdf`);
+          this.mostrarNotificacion('PDF descargado correctamente', 'success');
+
+        } catch (error) {
+          console.error('Error al generar PDF:', error);
+          this.mostrarNotificacion('Error al generar el PDF', 'error');
+        }
+      }
+
+      verEnGitHub() {
+        if (this.planActual) {
+          const url = `https://github.com/${CONFIG.GITHUB_REPO}/tree/main/data/planes/${this.planActual.referencia}.json`;
+          window.open(url, '_blank');
+        }
+      }
+
+      updateConnectionStatus(online = navigator.onLine) {
+        this.online = online;
+        const badge = document.getElementById('statusBadge');
+        const text = document.getElementById('statusText');
+
+        if (online) {
+          badge.classList.remove('offline');
+          text.textContent = 'Conectado';
+          
+          // Intentar sincronizar planes locales
+          this.syncLocalPlans();
+        } else {
+          badge.classList.add('offline');
+          text.textContent = 'Sin conexión';
+        }
+      }
+
+      async syncLocalPlans() {
+        const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+        if (planesLocales.length === 0) return;
+
+        this.mostrarNotificacion('Sincronizando planes locales...', 'info');
+
+        for (const plan of planesLocales) {
+          try {
+            await this.guardarPlanEnGitHub(plan);
+          } catch (error) {
+            console.error('Error sincronizando plan:', error);
+          }
+        }
+
+        // Limpiar planes locales después de sincronizar
+        localStorage.removeItem('planes_locales');
+        await this.loadPlanes();
+      }
+
+      async syncData() {
+        this.mostrarNotificacion('Sincronizando datos...', 'info');
+        
+        try {
+          await this.loadConfiguration();
+          await this.loadPlanes();
+          this.mostrarNotificacion('Sincronización completada', 'success');
+        } catch (error) {
+          console.error('Error sincronizando:', error);
+          this.mostrarNotificacion('Error al sincronizar', 'error');
+        }
+      }
+
+      showInfo() {
+        const info = `
+          <strong>Simulador DMD v2.0</strong><br>
+          <br>
+          <strong>Características:</strong><br>
+          • Sincronización con GitHub<br>
+          • Trabajo offline/online<br>
+          • Generación de PDF<br>
+          • Configuración dinámica<br>
+          <br>
+          <strong>Repositorio:</strong><br>
+          ${CONFIG.GITHUB_REPO}<br>
+          <br>
+          <strong>Estado:</strong><br>
+          • Entidades: ${CONFIG.ENTIDADES.length}<br>
+          • Productos: ${CONFIG.TIPOS_PRODUCTO.length}<br>
+          • Planes guardados: ${this.planes.length}
+        `;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+              <h3>Información del Sistema</h3>
+              <button class="btn btn-icon" onclick="this.closest('.modal').remove()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>${info}</p>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+      }
+    }
+
+    // ==================== INICIALIZAR APLICACIÓN ====================
+    const app = new DMDApp();
+
+    // Añadir estilos para animaciones
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+      
+      input.error, select.error {
+        animation: shake 0.3s ease-in-out;
+      }
+      
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>
