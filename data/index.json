@@ -1,8 +1,16 @@
 {
   "version": "1.0.0",
-  "totalPlanes": 2,
-  "ultimaActualizacion": "2025-07-07T12:31:09.173Z",
+  "totalPlanes": 3,
+  "ultimaActualizacion": "2025-07-07T21:51:39.486Z",
   "planes": [
+    {
+      "referencia": "DMD-20250707-5847",
+      "cliente": "Ramon Arias Abreu",
+      "dni": "53849973G",
+      "fecha": "2025-07-07T21:51:35.743Z",
+      "totalImporte": 4756,
+      "descuentoMedio": 45.092514718250634
+    },
     {
       "referencia": "DMD-20250707-2905",
       "cliente": "ramon",
