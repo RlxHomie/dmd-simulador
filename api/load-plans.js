@@ -10,6 +10,18 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    const missing = ['GITHUB_TOKEN', 'GITHUB_OWNER', 'GITHUB_REPO']
+      .filter(v => !process.env[v]);
+    if (missing.length) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: 'Missing environment variables',
+          missing
+        })
+      };
+    }
+
     const octokit = new Octokit({
       auth: process.env.GITHUB_TOKEN
     });
