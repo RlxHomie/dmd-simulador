@@ -11,6 +11,12 @@
     "maxCuotas": 360,
     "maxDeudasPorPlan": 50
   },
+  "comisiones": {
+    "porcentaje": 20,
+    "minimo": 500,
+    "iva": 21,
+    "margenMinimo": 1.5
+  },
   "formatos": {
     "moneda": {
       "style": "currency",
@@ -31,6 +37,6 @@
     "planGuardado": "Plan guardado correctamente",
     "errorGuardado": "Error al guardar el plan",
     "sinConexion": "Trabajando sin conexión",
-    "sincronizando": "Sincronizando datos..."
-  }
-}
+    "# 🚀 Guía de Implementación - Simulador DMD
+
+## 📋 Estructura Completa del Proyecto
