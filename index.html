@@ -1086,15 +1086,16 @@
         let totalImporte = 0;
         let totalImporteFinal = 0;
         
-        filas.forEach(fila => {
-          const importe = parseFloat(fila.querySelector('.importe').value) || 0;
-          const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+filas.forEach((fila, index) => {
+  const contrato = fila.querySelector('.contrato').value;
+  const importe = parseFloat(fila.querySelector('.importe').value) || 0;
+  const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
 
-          if (!contrato) {
-            this.mostrarNotificacion(`Falta el número de contrato en la fila ${index + 1}`, 'error');
-            hayErrores = true;
-            return;
-          }
+  if (!contrato) {
+    this.mostrarNotificacion(`Falta el número de contrato en la fila ${index + 1}`, 'error');
+    hayErrores = true;
+    return;
+  }
 
           if (importe <= 0) {
             this.mostrarNotificacion(`El importe debe ser mayor que 0 en la fila ${index + 1}`, 'error');
