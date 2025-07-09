@@ -167,10 +167,8 @@
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
       margin-bottom: 1.5rem;
-      /* FIX: Altura fija para evitar crecimiento infinito */
-      height: 400px;
-      display: flex;
-      flex-direction: column;
+      height: 400px; /* Altura fija para evitar el crecimiento infinito */
+      position: relative; /* Necesario para que el canvas se posicione correctamente */
     }
 
     .chart-header {
@@ -178,7 +176,6 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1.5rem;
-      flex-shrink: 0;
     }
 
     .chart-title {
@@ -209,29 +206,6 @@
       background: var(--primary);
       color: white;
       border-color: var(--primary);
-    }
-
-    /* FIX: Contenedor específico para el canvas del chart */
-    .chart-canvas-container {
-      flex: 1;
-      position: relative;
-      min-height: 0;
-    }
-
-    .chart-canvas-container canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    /* Grid específico para gráficos lado a lado */
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
-
-    .charts-grid .chart-container {
-      height: 350px;
     }
 
     /* Timeline Styles */
@@ -1078,4 +1052,2954 @@
         max-width: none;
       }
 
-      .
+      .nav-tabs {
+        flex-direction: column;
+      }
+
+      .nav-tab {
+        width: 100%;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Utilidades */
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .mt-1 { margin-top: 0.5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 1.5rem; }
+    .d-none { display: none; }
+    .d-flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .align-center { align-items: center; }
+    .gap-1 { gap: 0.5rem; }
+    .gap-2 { gap: 1rem; }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Cargando configuración...</p>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-info">
+      <div class="status-badge" id="statusBadge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span id="statusText">Conectado</span>
+      </div>
+      <span id="lastUpdate" style="color: var(--text-secondary); font-size: 0.75rem;"></span>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app && app.showInfo ? app.showInfo() : console.log('App not ready')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        Info
+      </button>
+      <button class="btn btn-primario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app && app.syncData ? app.syncData() : console.log('App not ready')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Sincronizar
+      </button>
+    </div>
+  </div>
+
+  <div class="main-wrapper">
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="app && app.switchTab ? app.switchTab('dashboard') : console.log('App not ready')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Dashboard
+      </button>
+      <button class="nav-tab" onclick="app && app.switchTab ? app.switchTab('simulador') : console.log('App not ready')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        Simulador
+      </button>
+      <button class="nav-tab" onclick="app && app.switchTab ? app.switchTab('seguimiento') : console.log('App not ready')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        Seguimiento
+      </button>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div id="dashboardContainer" class="dashboard-container active">
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-title">Planes Creados</div>
+            <div class="kpi-icon" style="background: var(--primary);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="kpiPlanesCreados">0</div>
+          <div class="kpi-change positive">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span id="kpiPlanesCambio">+0% este mes</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-title">Tasa de Conversión</div>
+            <div class="kpi-icon" style="background: var(--success);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="kpiConversion">0%</div>
+          <div class="kpi-change positive">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span id="kpiConversionCambio">+0% vs mes anterior</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-title">Ahorro Total Generado</div>
+            <div class="kpi-icon" style="background: var(--warning);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="kpiAhorro">0€</div>
+          <div class="kpi-change positive">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span id="kpiAhorroCambio">+0% este mes</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-title">Comisiones Acumuladas</div>
+            <div class="kpi-icon" style="background: var(--primary);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="kpiComisiones">0€</div>
+          <div class="kpi-change positive">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span id="kpiComisionesCambio">+0% este mes</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title">Evolución Mensual de Planes</h3>
+          <div class="chart-filters">
+            <button class="chart-filter active" onclick="app && app.updateChart ? app.updateChart('evolucion', '6m') : console.log('App not ready')">6 Meses</button>
+            <button class="chart-filter" onclick="app && app.updateChart ? app.updateChart('evolucion', '12m') : console.log('App not ready')">12 Meses</button>
+            <button class="chart-filter" onclick="app && app.updateChart ? app.updateChart('evolucion', 'ytd') : console.log('App not ready')">Año Actual</button>
+          </div>
+        </div>
+        <canvas id="chartEvolucion" width="400" height="200"></canvas>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="chart-container">
+          <div class="chart-header">
+            <h3 class="chart-title">Distribución por Tipo de Deuda</h3>
+          </div>
+          <canvas id="chartDistribucion" width="200" height="200"></canvas>
+        </div>
+
+        <div class="chart-container">
+          <div class="chart-header">
+            <h3 class="chart-title">Funnel de Conversión</h3>
+          </div>
+          <canvas id="chartFunnel" width="200" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulador Container -->
+    <div id="simuladorContainer" class="contenedor-simulador" style="display: none;">
+      <div class="header-simulador">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Logo_DMD_Asesores.png/320px-Logo_DMD_Asesores.png" 
+             alt="Logo DMD Asesores" 
+             class="logo">
+        <h1>Simulador de Reestructuración de Deuda</h1>
+        <p style="color: var(--text-secondary); margin-top: -0.5rem;">
+          Sistema colaborativo con sincronización en GitHub
+        </p>
+      </div>
+
+      <form id="formularioSimulador">
+        <div class="form-grid">
+          <div class="campo">
+            <label for="nombreDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Nombre del Cliente
+            </label>
+            <input type="text" id="nombreDeudor" required placeholder="Ej: Juan Pérez García">
+            <span class="help-text">Nombre completo del deudor</span>
+          </div>
+
+          <div class="campo">
+            <label for="dniDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+              DNI/NIE
+            </label>
+            <input type="text" id="dniDeudor" required placeholder="Ej: 12345678A" pattern="[0-9]{8}[A-Za-z]|[XYZ][0-9]{7}[A-Za-z]">
+            <span class="help-text">Documento de identidad</span>
+          </div>
+
+          <div class="campo">
+            <label for="emailDeudor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Email
+            </label>
+            <input type="email" id="emailDeudor" placeholder="correo@ejemplo.com">
+            <span class="help-text">Para enviar el plan por correo</span>
+          </div>
+
+          <div class="campo">
+            <label for="numCuotas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Número de cuotas
+            </label>
+            <input type="number" id="numCuotas" min="1" max="360" value="12" required>
+            <span class="help-text">Entre 1 y 360 meses</span>
+          </div>
+        </div>
+
+        <div class="tabla-deudas">
+          <h2>
+            <span>Deudas a Incluir</span>
+            <span id="totalDeudasCount" style="font-size: 0.9rem; font-weight: normal;">0 deudas</span>
+          </h2>
+          <div class="tabla-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nº Contrato</th>
+                  <th>Producto</th>
+                  <th>Entidad</th>
+                  <th>Importe (€)</th>
+                  <th>% Desc.</th>
+                  <th>Importe Final</th>
+                  <th style="width: 50px;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaDeudas"></tbody>
+              <tfoot>
+                <tr style="background: #f8f9fa;">
+                  <td colspan="3" style="text-align: right; font-weight: 600;">Totales:</td>
+                  <td style="text-align: right; font-weight: 600;" id="totalImporte">0,00 €</td>
+                  <td style="text-align: center; font-weight: 600;" id="totalDescuentoMedio">0%</td>
+                  <td style="text-align: right; font-weight: 600; color: var(--success);" id="totalImporteFinal">0,00 €</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div style="padding: 1rem;">
+            <button type="button" class="btn btn-secundario" id="btnAgregarFila">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Añadir Deuda
+            </button>
+            <button type="button" class="btn btn-secundario" id="btnCargarPlan">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Cargar Plan Guardado
+            </button>
+          </div>
+        </div>
+
+        <div class="d-flex justify-between align-center">
+          <button type="button" class="btn btn-secundario" id="btnReAnalizar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Reiniciar
+          </button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-secundario" id="btnGuardarBorrador">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Guardar Borrador
+            </button>
+            <button type="button" class="btn btn-secundario" id="btnSimular">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
+              </svg>
+              Simular Plan
+            </button>
+            <button type="submit" class="btn btn-primario" id="btnCalcular" style="display: none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Contratar y Guardar
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Vista previa de simulación -->
+      <div class="resultado-simulacion" id="resultadoSimulacion" style="display: none;">
+        <h3>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+            <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
+          </svg>
+          Simulación del Plan
+        </h3>
+        <div id="simulacion-content"></div>
+        <div class="alerta-rentabilidad" id="alertaRentabilidad" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <strong>Atención: Plan poco rentable</strong>
+            <p id="mensajeRentabilidad"></p>
+          </div>
+        </div>
+        <div class="d-flex gap-1 mt-2 justify-between">
+          <button type="button" class="btn btn-secundario" onclick="app && app.modificarSimulacion ? app.modificarSimulacion() : console.log('App not ready')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Modificar
+          </button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-success" id="btnConfirmarPlan">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Confirmar y Contratar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="resultado-final" id="resultadoFinal">
+        <h3>✓ Plan Guardado Correctamente</h3>
+        <p>El plan ha sido guardado en el repositorio y está listo para ser enviado al cliente.</p>
+        <div class="resumen-final" id="resumenFinal"></div>
+        <div class="d-flex gap-1 mt-3 justify-center">
+          <button class="btn btn-success" id="btnDescargarPDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Descargar PDF
+          </button>
+          <button class="btn btn-secundario" id="btnEnviarEmail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            Enviar por Email
+          </button>
+          <button class="btn btn-secundario" id="btnVerEnGitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+            Ver en GitHub
+          </button>
+          <button class="btn btn-primario" onclick="app && app.nuevoCliente ? app.nuevoCliente() : console.log('App not ready')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo Cliente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seguimiento Container -->
+    <div id="seguimientoContainer" class="contenedor-simulador" style="display: none;">
+      <h2>Seguimiento de Planes</h2>
+      
+      <!-- Filtros -->
+      <div class="form-grid mb-3">
+        <div class="campo">
+          <label>Buscar por cliente o referencia</label>
+          <input type="text" id="buscarSeguimiento" placeholder="Nombre, DNI o referencia...">
+        </div>
+        <div class="campo">
+          <label>Estado</label>
+          <select id="filtroEstado">
+            <option value="">Todos los estados</option>
+            <option value="simulado">Simulado</option>
+            <option value="contratado">Contratado</option>
+            <option value="en_negociacion">En Negociación</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="en_pago">En Pago</option>
+            <option value="completado">Completado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Período</label>
+          <select id="filtroPeriodo">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="365">Último año</option>
+            <option value="0">Todo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla de seguimiento -->
+      <div class="tabla-deudas">
+        <h2>
+          <span>Planes en Seguimiento</span>
+          <span id="totalPlanesSeguimiento" style="font-size: 0.9rem; font-weight: normal;">0 planes</span>
+        </h2>
+        <div class="tabla-scroll">
+          <table class="seguimiento-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Fecha Creación</th>
+                <th>Deuda Total</th>
+                <th>Cuota</th>
+                <th>Progreso</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaSeguimiento">
+              <!-- Se llenará dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para cargar planes -->
+  <div id="modalPlanes" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cargar Plan Guardado</h3>
+        <button type="button" class="btn btn-icon" onclick="app && app.cerrarModalPlanes ? app.cerrarModalPlanes() : console.log('App not ready')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="buscarPlan" class="search-box" placeholder="Buscar por nombre, DNI o referencia...">
+        <div id="listaPlanes" class="planes-grid">
+          <!-- Se llenará dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para detalles del plan -->
+  <div id="modalDetallesPlan" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalles del Plan - <span id="detalleReferencia"></span></h3>
+        <button type="button" class="btn btn-icon" onclick="app && app.cerrarModalDetalles ? app.cerrarModalDetalles() : console.log('App not ready')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="detallesPlanContent">
+          <!-- Se llenará dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementos dummy para evitar errores -->
+  <div id="dummyElements" style="display: none;">
+    <div id="dummyContainer"></div>
+    <input id="dummyInput" />
+    <select id="dummySelect"></select>
+    <button id="dummyButton"></button>
+  </div>
+
+  <script>
+    // ==================== CONFIGURACIÓN GLOBAL ====================
+    const CONFIG = {
+      // URLs del sistema
+      API_URL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:8888/.netlify/functions' 
+        : '/.netlify/functions',
+      GITHUB_REPO: 'RlxHomie/dmd-simulador', // Cambiar por tu repo
+      
+      // Valores por defecto (se actualizarán desde los archivos JSON)
+      ENTIDADES: [],
+      TIPOS_PRODUCTO: [],
+      MAX_DESCUENTO_TOTAL: 95,
+      
+      // Formato de moneda
+      FORMATO_MONEDA: {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }
+    };
+
+    // Estados del plan
+    const ESTADOS = {
+      SIMULADO: 'simulado',
+      CONTRATADO: 'contratado',
+      EN_NEGOCIACION: 'en_negociacion',
+      APROBADO: 'aprobado',
+      EN_PAGO: 'en_pago',
+      COMPLETADO: 'completado',
+      CANCELADO: 'cancelado'
+    };
+
+    // Función para obtener elemento de forma segura
+    function safeGetElement(id, createDummy = false) {
+      let element = document.getElementById(id);
+      if (!element && createDummy) {
+        console.warn(`Elemento ${id} no encontrado, creando dummy`);
+        element = document.createElement('div');
+        element.id = id;
+        element.style.display = 'none';
+        document.getElementById('dummyElements').appendChild(element);
+      }
+      return element;
+    }
+
+    // Función para agregar event listener de forma segura
+    function safeAddEventListener(elementId, event, handler) {
+      const element = safeGetElement(elementId, true);
+      if (element) {
+        element.addEventListener(event, handler);
+      } else {
+        console.warn(`No se pudo agregar event listener a ${elementId}`);
+      }
+    }
+
+    // ==================== APLICACIÓN PRINCIPAL ====================
+    class DMDApp {
+      constructor() {
+        this.planes = [];
+        this.configuracion = {};
+        this.comisiones = {
+          porcentaje: 20, // 20% de comisión por defecto
+          minimo: 500,    // Mínimo 500€
+          iva: 21         // 21% IVA
+        };
+        this.online = navigator.onLine;
+        this.simulacionActual = null;
+        this.planActual = null;
+        this.currentTab = 'dashboard';
+        this.charts = {};
+        this.analytics = {
+          planesHoy: 0,
+          planesSemana: 0,
+          planesMes: 0,
+          tasaConversion: 0,
+          ahorroTotal: 0,
+          comisionesTotal: 0,
+          clientesActivos: 0
+        };
+      }
+
+      async initApp() {
+        try {
+          console.log('Iniciando aplicación DMD...');
+          
+          // Cargar configuración
+          await this.loadConfiguration();
+          
+          // Inicializar eventos
+          this.initEventListeners();
+          
+          // Actualizar estado
+          this.updateConnectionStatus();
+          
+          // Ocultar pantalla de carga
+          const loadingScreen = safeGetElement('loadingScreen');
+          if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+              loadingScreen.style.display = 'none';
+            }, 300);
+          }
+          
+          // Cargar planes si estamos online
+          if (this.online) {
+            await this.loadPlanes();
+          }
+          
+          // Inicializar dashboard
+          this.initDashboard();
+          
+          // Inicializar tabla con primera fila
+          this.agregarFilaDeuda();
+          
+          console.log('Aplicación DMD iniciada correctamente');
+          
+        } catch (error) {
+          console.error('Error iniciando aplicación:', error);
+          this.mostrarNotificacion('Error al cargar la configuración', 'error');
+        }
+      }
+
+      async loadConfiguration() {
+        try {
+          // Cargar archivos de configuración
+          const [entidades, productos, configuracion] = await Promise.all([
+            fetch('/config/entidades.json').then(r => r.json()).catch(() => null),
+            fetch('/config/productos.json').then(r => r.json()).catch(() => null),
+            fetch('/config/configuracion.json').then(r => r.json()).catch(() => null)
+          ]);
+
+          // Actualizar CONFIG global
+          if (entidades && entidades.entidades) {
+            CONFIG.ENTIDADES = entidades.entidades
+              .filter(e => e.activo)
+              .map(e => e.nombre);
+          } else {
+            CONFIG.ENTIDADES = ["BBVA", "CaixaBank", "Santander", "Sabadell", "Bankinter"];
+          }
+          
+          if (productos && productos.productos) {
+            CONFIG.TIPOS_PRODUCTO = productos.productos
+              .filter(p => p.activo);
+          } else {
+            CONFIG.TIPOS_PRODUCTO = [
+              { tipo: "Micropréstamo", maxDescuento: 50, color: "#ff9500" },
+              { tipo: "Tarjeta de Crédito", maxDescuento: 25, color: "#af52de" },
+              { tipo: "Préstamo Personal", maxDescuento: 20, color: "#0a84ff" }
+            ];
+          }
+          
+          // Cargar configuración de comisiones si existe
+          if (configuracion && configuracion.comisiones) {
+            this.comisiones = {
+              ...this.comisiones,
+              ...configuracion.comisiones
+            };
+          }
+          
+          this.configuracion = configuracion || {};
+          
+          console.log('Configuración cargada:', {
+            entidades: CONFIG.ENTIDADES.length,
+            productos: CONFIG.TIPOS_PRODUCTO.length
+          });
+          
+        } catch (error) {
+          console.warn('Usando configuración por defecto:', error);
+          
+          // Configuración por defecto si falla la carga
+          CONFIG.ENTIDADES = [
+            "BBVA", "CaixaBank", "Santander", "Sabadell", "Bankinter"
+          ];
+          
+          CONFIG.TIPOS_PRODUCTO = [
+            { tipo: "Micropréstamo", maxDescuento: 50, color: "#ff9500" },
+            { tipo: "Tarjeta de Crédito", maxDescuento: 25, color: "#af52de" },
+            { tipo: "Préstamo Personal", maxDescuento: 20, color: "#0a84ff" }
+          ];
+        }
+      }
+
+      initEventListeners() {
+        // Formulario - prevenir submit por defecto
+        safeAddEventListener('formularioSimulador', 'submit', (e) => {
+          e.preventDefault();
+          this.calcularYGuardarPlan();
+        });
+
+        // Botones principales
+        safeAddEventListener('btnAgregarFila', 'click', () => this.agregarFilaDeuda());
+        safeAddEventListener('btnCargarPlan', 'click', () => this.mostrarModalPlanes());
+        safeAddEventListener('btnReAnalizar', 'click', () => this.reiniciarFormulario());
+        safeAddEventListener('btnGuardarBorrador', 'click', () => this.guardarBorrador());
+        safeAddEventListener('btnDescargarPDF', 'click', () => this.descargarPDF());
+        safeAddEventListener('btnVerEnGitHub', 'click', () => this.verEnGitHub());
+        
+        // Nuevos botones de simulación
+        safeAddEventListener('btnSimular', 'click', () => this.simularPlan());
+        safeAddEventListener('btnConfirmarPlan', 'click', () => this.confirmarYGuardarPlan());
+        safeAddEventListener('btnEnviarEmail', 'click', () => this.enviarPorEmail());
+
+        // Búsqueda en modal
+        safeAddEventListener('buscarPlan', 'input', (e) => this.filtrarPlanes(e.target.value));
+
+        // Filtros de seguimiento
+        safeAddEventListener('buscarSeguimiento', 'input', () => this.actualizarTablaSeguimiento());
+        safeAddEventListener('filtroEstado', 'change', () => this.actualizarTablaSeguimiento());
+        safeAddEventListener('filtroPeriodo', 'change', () => this.actualizarTablaSeguimiento());
+
+        // Estado de conexión
+        window.addEventListener('online', () => this.updateConnectionStatus(true));
+        window.addEventListener('offline', () => this.updateConnectionStatus(false));
+
+        // Cerrar modal al hacer clic fuera
+        const modalPlanes = safeGetElement('modalPlanes');
+        if (modalPlanes) {
+          modalPlanes.addEventListener('click', (e) => {
+            if (e.target.id === 'modalPlanes') {
+              this.cerrarModalPlanes();
+            }
+          });
+        }
+
+        const modalDetalles = safeGetElement('modalDetallesPlan');
+        if (modalDetalles) {
+          modalDetalles.addEventListener('click', (e) => {
+            if (e.target.id === 'modalDetallesPlan') {
+              this.cerrarModalDetalles();
+            }
+          });
+        }
+      }
+
+      // ==================== NAVEGACIÓN POR TABS ====================
+      switchTab(tab) {
+        // Actualizar tabs activos
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Ocultar todos los contenedores
+        const dashboardContainer = safeGetElement('dashboardContainer');
+        const simuladorContainer = safeGetElement('simuladorContainer');
+        const seguimientoContainer = safeGetElement('seguimientoContainer');
+        
+        if (dashboardContainer) dashboardContainer.style.display = 'none';
+        if (simuladorContainer) simuladorContainer.style.display = 'none';
+        if (seguimientoContainer) seguimientoContainer.style.display = 'none';
+        
+        // Mostrar contenedor seleccionado
+        switch(tab) {
+          case 'dashboard':
+            if (dashboardContainer) dashboardContainer.style.display = 'block';
+            this.actualizarDashboard();
+            break;
+          case 'simulador':
+            if (simuladorContainer) simuladorContainer.style.display = 'block';
+            break;
+          case 'seguimiento':
+            if (seguimientoContainer) seguimientoContainer.style.display = 'block';
+            this.actualizarTablaSeguimiento();
+            break;
+        }
+        
+        this.currentTab = tab;
+      }
+
+      // ==================== DASHBOARD ====================
+      initDashboard() {
+        try {
+          // Verificar si Chart.js está disponible
+          if (typeof Chart === 'undefined') {
+            console.warn('Chart.js no está disponible');
+            return;
+          }
+
+          // Inicializar Chart.js
+          const ctxEvolucion = safeGetElement('chartEvolucion');
+          if (ctxEvolucion && ctxEvolucion.getContext) {
+            this.charts.evolucion = new Chart(ctxEvolucion.getContext('2d'), {
+              type: 'line',
+              data: {
+                labels: [],
+                datasets: [{
+                  label: 'Planes Creados',
+                  data: [],
+                  borderColor: 'rgb(0, 113, 227)',
+                  backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                  tension: 0.4
+                }, {
+                  label: 'Planes Contratados',
+                  data: [],
+                  borderColor: 'rgb(52, 199, 89)',
+                  backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                  tension: 0.4
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom'
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    suggestedMax: 5 // Asegura que el eje Y tenga un rango mínimo visible
+                  },
+                  x: {
+                    grid: {
+                      display: false // Oculta las líneas de la rejilla del eje X
+                    }
+                  }
+                }
+              }
+            });
+          }
+
+          const ctxDistribucion = safeGetElement('chartDistribucion');
+          if (ctxDistribucion && ctxDistribucion.getContext) {
+            this.charts.distribucion = new Chart(ctxDistribucion.getContext('2d'), {
+              type: 'doughnut',
+              data: {
+                labels: [],
+                datasets: [{
+                  data: [],
+                  backgroundColor: []
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right'
+                  }
+                }
+              }
+            });
+          }
+
+          const ctxFunnel = safeGetElement('chartFunnel');
+          if (ctxFunnel && ctxFunnel.getContext) {
+            this.charts.funnel = new Chart(ctxFunnel.getContext('2d'), {
+              type: 'bar',
+              data: {
+                labels: ['Simulados', 'Contratados', 'En Negociación', 'Aprobados', 'En Pago'],
+                datasets: [{
+                  data: [],
+                  backgroundColor: [
+                    'rgba(0, 113, 227, 0.8)',
+                    'rgba(52, 199, 89, 0.8)',
+                    'rgba(255, 204, 0, 0.8)',
+                    'rgba(52, 199, 89, 0.6)',
+                    'rgba(0, 113, 227, 0.6)'
+                  ]
+                }]
+              },
+              options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false
+                  }
+                },
+                scales: {
+                  x: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          }
+
+          this.actualizarDashboard();
+        } catch (error) {
+          console.error('Error inicializando dashboard:', error);
+        }
+      }
+
+      actualizarDashboard() {
+        try {
+          // Calcular KPIs
+          this.calcularKPIs();
+          
+          // Actualizar valores en la UI
+          const kpiPlanesCreados = safeGetElement('kpiPlanesCreados');
+          const kpiConversion = safeGetElement('kpiConversion');
+          const kpiAhorro = safeGetElement('kpiAhorro');
+          const kpiComisiones = safeGetElement('kpiComisiones');
+          
+          if (kpiPlanesCreados) kpiPlanesCreados.textContent = this.analytics.planesMes;
+          if (kpiConversion) kpiConversion.textContent = `${this.analytics.tasaConversion.toFixed(1)}%`;
+          if (kpiAhorro) kpiAhorro.textContent = this.formatearMoneda(this.analytics.ahorroTotal);
+          if (kpiComisiones) kpiComisiones.textContent = this.formatearMoneda(this.analytics.comisionesTotal);
+          
+          // Actualizar gráficos
+          this.actualizarGraficos();
+        } catch (error) {
+          console.error('Error actualizando dashboard:', error);
+        }
+      }
+
+      calcularKPIs() {
+        const ahora = new Date();
+        const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const hace30Dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        let planesHoy = 0;
+        let planesSemana = 0;
+        let planesMes = 0;
+        let planesSimulados = 0;
+        let planesContratados = 0;
+        let ahorroTotal = 0;
+        let comisionesTotal = 0;
+        
+        this.planes.forEach(plan => {
+          const fechaPlan = new Date(plan.fecha);
+          
+          if (fechaPlan >= hoy) planesHoy++;
+          if (fechaPlan >= hace7Dias) planesSemana++;
+          if (fechaPlan >= hace30Dias) planesMes++;
+          
+          // Contar por estado
+          const estado = plan.estado || ESTADOS.SIMULADO;
+          if (estado === ESTADOS.SIMULADO) planesSimulados++;
+          if (estado === ESTADOS.CONTRATADO || estado === ESTADOS.EN_PAGO || estado === ESTADOS.COMPLETADO) {
+            planesContratados++;
+            ahorroTotal += plan.ahorro || 0;
+            if (plan.comisiones) {
+              comisionesTotal += plan.comisiones.total || 0;
+            }
+          }
+        });
+        
+        this.analytics = {
+          planesHoy,
+          planesSemana,
+          planesMes,
+          tasaConversion: planesSimulados > 0 ? (planesContratados / planesSimulados) * 100 : 0,
+          ahorroTotal,
+          comisionesTotal,
+          clientesActivos: new Set(this.planes.map(p => p.cliente?.dni || p.dni)).size
+        };
+      }
+
+      actualizarGraficos() {
+        try {
+          if (!this.charts.evolucion) return;
+
+          // Evolución mensual
+          const meses = this.obtenerUltimosMeses(6);
+          const datosEvolucion = this.calcularEvolucionMensual(meses);
+          
+          this.charts.evolucion.data.labels = meses.map(m => m.label);
+          this.charts.evolucion.data.datasets[0].data = datosEvolucion.creados;
+          this.charts.evolucion.data.datasets[1].data = datosEvolucion.contratados;
+          this.charts.evolucion.update();
+          
+          // Distribución por tipo
+          if (this.charts.distribucion) {
+            const distribucion = this.calcularDistribucionTipos();
+            this.charts.distribucion.data.labels = Object.keys(distribucion);
+            this.charts.distribucion.data.datasets[0].data = Object.values(distribucion);
+            this.charts.distribucion.data.datasets[0].backgroundColor = CONFIG.TIPOS_PRODUCTO.map(t => t.color);
+            this.charts.distribucion.update();
+          }
+          
+          // Funnel de conversión
+          if (this.charts.funnel) {
+            const funnel = this.calcularFunnel();
+            this.charts.funnel.data.datasets[0].data = [
+              funnel.simulados,
+              funnel.contratados,
+              funnel.en_negociacion,
+              funnel.aprobados,
+              funnel.en_pago
+            ];
+            this.charts.funnel.update();
+          }
+        } catch (error) {
+          console.error('Error actualizando gráficos:', error);
+        }
+      }
+
+      obtenerUltimosMeses(cantidad) {
+        const meses = [];
+        const ahora = new Date();
+        
+        for (let i = cantidad - 1; i >= 0; i--) {
+          const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+          meses.push({
+            fecha,
+            label: fecha.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })
+          });
+        }
+        
+        return meses;
+      }
+
+      calcularEvolucionMensual(meses) {
+        const creados = new Array(meses.length).fill(0);
+        const contratados = new Array(meses.length).fill(0);
+        
+        this.planes.forEach(plan => {
+          const fechaPlan = new Date(plan.fecha);
+          
+          meses.forEach((mes, index) => {
+            const mesInicio = mes.fecha;
+            const mesFin = new Date(mesInicio.getFullYear(), mesInicio.getMonth() + 1, 0);
+            
+            if (fechaPlan >= mesInicio && fechaPlan <= mesFin) {
+              creados[index]++;
+              
+              const estado = plan.estado || ESTADOS.SIMULADO;
+              if (estado === ESTADOS.CONTRATADO || estado === ESTADOS.EN_PAGO || estado === ESTADOS.COMPLETADO) {
+                contratados[index]++;
+              }
+            }
+          });
+        });
+        
+        return { creados, contratados };
+      }
+
+      calcularDistribucionTipos() {
+        const distribucion = {};
+        
+        CONFIG.TIPOS_PRODUCTO.forEach(tipo => {
+          distribucion[tipo.tipo] = 0;
+        });
+        
+        this.planes.forEach(plan => {
+          if (plan.deudas) {
+            plan.deudas.forEach(deuda => {
+              if (distribucion[deuda.producto] !== undefined) {
+                distribucion[deuda.producto]++;
+              }
+            });
+          }
+        });
+        
+        return distribucion;
+      }
+
+      calcularFunnel() {
+        const funnel = {
+          simulados: 0,
+          contratados: 0,
+          en_negociacion: 0,
+          aprobados: 0,
+          en_pago: 0
+        };
+        
+        this.planes.forEach(plan => {
+          const estado = plan.estado || ESTADOS.SIMULADO;
+          
+          switch(estado) {
+            case ESTADOS.SIMULADO:
+              funnel.simulados++;
+              break;
+            case ESTADOS.CONTRATADO:
+              funnel.contratados++;
+              break;
+            case ESTADOS.EN_NEGOCIACION:
+              funnel.en_negociacion++;
+              break;
+            case ESTADOS.APROBADO:
+              funnel.aprobados++;
+              break;
+            case ESTADOS.EN_PAGO:
+              funnel.en_pago++;
+              break;
+          }
+        });
+        
+        return funnel;
+      }
+
+      updateChart(tipo, periodo) {
+        try {
+          // Actualizar botones de filtro
+          if (event && event.target) {
+            event.target.parentElement.querySelectorAll('.chart-filter').forEach(btn => {
+              btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+          }
+          
+          // Actualizar datos según el período seleccionado
+          let meses;
+          switch(periodo) {
+            case '6m':
+              meses = this.obtenerUltimosMeses(6);
+              break;
+            case '12m':
+              meses = this.obtenerUltimosMeses(12);
+              break;
+            case 'ytd':
+              const ahora = new Date();
+              meses = this.obtenerUltimosMeses(ahora.getMonth() + 1);
+              break;
+          }
+          
+          if (this.charts.evolucion && meses) {
+            const datosEvolucion = this.calcularEvolucionMensual(meses);
+            this.charts.evolucion.data.labels = meses.map(m => m.label);
+            this.charts.evolucion.data.datasets[0].data = datosEvolucion.creados;
+            this.charts.evolucion.data.datasets[1].data = datosEvolucion.contratados;
+            this.charts.evolucion.update();
+          }
+        } catch (error) {
+          console.error('Error actualizando chart:', error);
+        }
+      }
+
+      // ==================== SEGUIMIENTO ====================
+      actualizarTablaSeguimiento() {
+        try {
+          const buscarSeguimiento = safeGetElement('buscarSeguimiento');
+          const filtroEstado = safeGetElement('filtroEstado');
+          const filtroPeriodo = safeGetElement('filtroPeriodo');
+          
+          const busqueda = buscarSeguimiento ? buscarSeguimiento.value.toLowerCase() : '';
+          const estadoFiltro = filtroEstado ? filtroEstado.value : '';
+          const periodoFiltro = filtroPeriodo ? parseInt(filtroPeriodo.value) : 30;
+          
+          // Filtrar planes
+          let planesFiltrados = this.planes.filter(plan => {
+            // Filtro de búsqueda
+            if (busqueda) {
+              const nombreCliente = plan.cliente?.nombre || plan.cliente || '';
+              const dni = plan.cliente?.dni || plan.dni || '';
+              const ref = plan.referencia || '';
+              
+              if (!nombreCliente.toLowerCase().includes(busqueda) &&
+                  !dni.toLowerCase().includes(busqueda) &&
+                  !ref.toLowerCase().includes(busqueda)) {
+                return false;
+              }
+            }
+            
+            // Filtro de estado
+            if (estadoFiltro && (plan.estado || ESTADOS.SIMULADO) !== estadoFiltro) {
+              return false;
+            }
+            
+            // Filtro de período
+            if (periodoFiltro > 0) {
+              const fechaPlan = new Date(plan.fecha);
+              const ahora = new Date();
+              const diferenciaDias = (ahora - fechaPlan) / (1000 * 60 * 60 * 24);
+              if (diferenciaDias > periodoFiltro) {
+                return false;
+              }
+            }
+            
+            return true;
+          });
+          
+          // Actualizar contador
+          const totalPlanesSeguimiento = safeGetElement('totalPlanesSeguimiento');
+          if (totalPlanesSeguimiento) {
+            totalPlanesSeguimiento.textContent = 
+              `${planesFiltrados.length} plan${planesFiltrados.length !== 1 ? 'es' : ''}`;
+          }
+          
+          // Renderizar tabla
+          const tbody = safeGetElement('tablaSeguimiento');
+          if (!tbody) return;
+          
+          if (planesFiltrados.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                  No se encontraron planes con los criterios seleccionados
+                </td>
+              </tr>
+            `;
+            return;
+          }
+          
+          tbody.innerHTML = planesFiltrados.map(plan => {
+            const estado = plan.estado || ESTADOS.SIMULADO;
+            const fecha = new Date(plan.fecha);
+            const nombreCliente = plan.cliente?.nombre || plan.cliente || 'Sin nombre';
+            const iniciales = nombreCliente.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            
+            // Calcular progreso (ejemplo simple)
+            let progreso = 0;
+            switch(estado) {
+              case ESTADOS.SIMULADO: progreso = 10; break;
+              case ESTADOS.CONTRATADO: progreso = 25; break;
+              case ESTADOS.EN_NEGOCIACION: progreso = 40; break;
+              case ESTADOS.APROBADO: progreso = 60; break;
+              case ESTADOS.EN_PAGO: progreso = 80; break;
+              case ESTADOS.COMPLETADO: progreso = 100; break;
+              case ESTADOS.CANCELADO: progreso = 0; break;
+            }
+            
+            return `
+              <tr>
+                <td>
+                  <div class="cliente-info">
+                    <div class="cliente-avatar">${iniciales}</div>
+                    <div>
+                      <div class="cliente-nombre">${nombreCliente}</div>
+                      <div class="cliente-ref">${plan.referencia}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="estado-badge ${estado}">${this.obtenerTextoEstado(estado)}</span>
+                </td>
+                <td>${fecha.toLocaleDateString('es-ES')}</td>
+                <td style="text-align: right;">${this.formatearMoneda(plan.totalImporte || 0)}</td>
+                <td style="text-align: right;">${this.formatearMoneda(plan.cuotaMensual || 0)}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                      <div style="width: ${progreso}%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">${progreso}%</span>
+                  </div>
+                </td>
+                <td>
+                  <button class="btn btn-icon" onclick="app.verDetallesPlan('${plan.referencia}')" title="Ver detalles">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                  <button class="btn btn-icon" onclick="app.actualizarEstadoPlan('${plan.referencia}')" title="Actualizar estado">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('Error actualizando tabla seguimiento:', error);
+        }
+      }
+
+      obtenerTextoEstado(estado) {
+        const textos = {
+          simulado: 'Simulado',
+          contratado: 'Contratado',
+          en_negociacion: 'En Negociación',
+          aprobado: 'Aprobado',
+          en_pago: 'En Pago',
+          completado: 'Completado',
+          cancelado: 'Cancelado'
+        };
+        return textos[estado] || estado;
+      }
+
+      verDetallesPlan(referencia) {
+        try {
+          const plan = this.planes.find(p => p.referencia === referencia);
+          if (!plan) return;
+          
+          const detalleReferencia = safeGetElement('detalleReferencia');
+          if (detalleReferencia) {
+            detalleReferencia.textContent = referencia;
+          }
+          
+          // Generar timeline de eventos
+          const eventos = this.generarTimelinePlan(plan);
+          
+          const html = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+              <div>
+                <h4>Información del Cliente</h4>
+                <p><strong>Nombre:</strong> ${plan.cliente?.nombre || 'No disponible'}</p>
+                <p><strong>DNI:</strong> ${plan.cliente?.dni || 'No disponible'}</p>
+                <p><strong>Email:</strong> ${plan.cliente?.email || 'No disponible'}</p>
+                <p><strong>Estado actual:</strong> <span class="estado-badge ${plan.estado || ESTADOS.SIMULADO}">${this.obtenerTextoEstado(plan.estado || ESTADOS.SIMULADO)}</span></p>
+              </div>
+              <div>
+                <h4>Resumen Financiero</h4>
+                <p><strong>Deuda total:</strong> ${this.formatearMoneda(plan.totalImporte || 0)}</p>
+                <p><strong>Total a pagar:</strong> ${this.formatearMoneda(plan.totalConDescuento || 0)}</p>
+                <p><strong>Ahorro:</strong> ${this.formatearMoneda(plan.ahorro || 0)}</p>
+                <p><strong>Cuota mensual:</strong> ${this.formatearMoneda(plan.cuotaMensual || 0)}</p>
+                <p><strong>Número de cuotas:</strong> ${plan.numCuotas || 0}</p>
+              </div>
+            </div>
+            
+            <div class="timeline-container">
+              <h4>Timeline del Plan</h4>
+              <div class="timeline">
+                ${eventos.map(evento => this.renderizarEventoTimeline(evento)).join('')}
+              </div>
+            </div>
+            
+            <div style="margin-top: 2rem;">
+              <h4>Deudas Incluidas</h4>
+              <table style="width: 100%; font-size: 0.875rem;">
+                <thead>
+                  <tr>
+                    <th>Contrato</th>
+                    <th>Producto</th>
+                    <th>Entidad</th>
+                    <th>Importe</th>
+                    <th>Descuento</th>
+                    <th>Final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(plan.deudas || []).map(deuda => `
+                    <tr>
+                      <td>${deuda.contrato}</td>
+                      <td>${deuda.producto}</td>
+                      <td>${deuda.entidad}</td>
+                      <td style="text-align: right;">${this.formatearMoneda(deuda.importe)}</td>
+                      <td style="text-align: center;">${deuda.descuento}%</td>
+                      <td style="text-align: right; font-weight: 600; color: var(--success);">
+                        ${this.formatearMoneda(deuda.importeConDescuento)}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: right;">
+              <button class="btn btn-secundario" onclick="app.cerrarModalDetalles()">Cerrar</button>
+              <button class="btn btn-primario" onclick="app.descargarPDFPlan('${referencia}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Descargar PDF
+              </button>
+            </div>
+          `;
+          
+          const detallesPlanContent = safeGetElement('detallesPlanContent');
+          if (detallesPlanContent) {
+            detallesPlanContent.innerHTML = html;
+          }
+          
+          const modalDetallesPlan = safeGetElement('modalDetallesPlan');
+          if (modalDetallesPlan) {
+            modalDetallesPlan.style.display = 'flex';
+          }
+        } catch (error) {
+          console.error('Error mostrando detalles del plan:', error);
+        }
+      }
+
+      generarTimelinePlan(plan) {
+        const eventos = [];
+        
+        // Evento de creación
+        eventos.push({
+          fecha: plan.fecha,
+          tipo: 'creacion',
+          titulo: 'Plan creado',
+          descripcion: 'Se creó el plan de reestructuración',
+          estado: 'success'
+        });
+        
+        // Eventos según el estado
+        if (plan.estado === ESTADOS.CONTRATADO || 
+            plan.estado === ESTADOS.EN_NEGOCIACION || 
+            plan.estado === ESTADOS.APROBADO || 
+            plan.estado === ESTADOS.EN_PAGO || 
+            plan.estado === ESTADOS.COMPLETADO) {
+          eventos.push({
+            fecha: plan.fechaContratacion || plan.fecha,
+            tipo: 'contratacion',
+            titulo: 'Plan contratado',
+            descripcion: 'El cliente aceptó y contrató el plan',
+            estado: 'success'
+          });
+        }
+        
+        if (plan.estado === ESTADOS.EN_NEGOCIACION || 
+            plan.estado === ESTADOS.APROBADO || 
+            plan.estado === ESTADOS.EN_PAGO || 
+            plan.estado === ESTADOS.COMPLETADO) {
+          eventos.push({
+            fecha: plan.fechaNegociacion || plan.fecha,
+            tipo: 'negociacion',
+            titulo: 'En negociación',
+            descripcion: 'Iniciada negociación con entidades acreedoras',
+            estado: 'warning'
+          });
+        }
+        
+        if (plan.estado === ESTADOS.APROBADO || 
+            plan.estado === ESTADOS.EN_PAGO || 
+            plan.estado === ESTADOS.COMPLETADO) {
+          eventos.push({
+            fecha: plan.fechaAprobacion || plan.fecha,
+            tipo: 'aprobacion',
+            titulo: 'Plan aprobado',
+            descripcion: 'Todas las entidades aprobaron el plan',
+            estado: 'success'
+          });
+        }
+        
+        if (plan.estado === ESTADOS.EN_PAGO || plan.estado === ESTADOS.COMPLETADO) {
+          eventos.push({
+            fecha: plan.fechaPrimerPago || plan.fecha,
+            tipo: 'pago',
+            titulo: 'Primer pago',
+            descripcion: 'Se realizó el primer pago del plan',
+            estado: 'success'
+          });
+        }
+        
+        if (plan.estado === ESTADOS.COMPLETADO) {
+          eventos.push({
+            fecha: plan.fechaCompletado || plan.fecha,
+            tipo: 'completado',
+            titulo: 'Plan completado',
+            descripcion: 'Se completaron todos los pagos exitosamente',
+            estado: 'success'
+          });
+        }
+        
+        if (plan.estado === ESTADOS.CANCELADO) {
+          eventos.push({
+            fecha: plan.fechaCancelacion || plan.fecha,
+            tipo: 'cancelacion',
+            titulo: 'Plan cancelado',
+            descripcion: plan.motivoCancelacion || 'El plan fue cancelado',
+            estado: 'danger'
+          });
+        }
+        
+        // Ordenar por fecha
+        return eventos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      }
+
+      renderizarEventoTimeline(evento) {
+        const fecha = new Date(evento.fecha);
+        const iconos = {
+          creacion: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
+          contratacion: '<polyline points="20 6 9 17 4 12"></polyline>',
+          negociacion: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+          aprobacion: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',
+          pago: '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
+          completado: '<circle cx="12" cy="12" r="10"></circle><polyline points="16 12 12 8 8 12"></polyline><line x1="12" y1="16" x2="12" y2="8"></line>',
+          cancelacion: '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>'
+        };
+        
+        return `
+          <div class="timeline-item">
+            <div class="timeline-marker ${evento.estado}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${iconos[evento.tipo] || '<circle cx="12" cy="12" r="10"></circle>'}
+              </svg>
+            </div>
+            <div class="timeline-content">
+              <div class="timeline-date">${fecha.toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</div>
+              <div class="timeline-title">${evento.titulo}</div>
+              <div class="timeline-description">${evento.descripcion}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      cerrarModalDetalles() {
+        const modalDetallesPlan = safeGetElement('modalDetallesPlan');
+        if (modalDetallesPlan) {
+          modalDetallesPlan.style.display = 'none';
+        }
+      }
+
+      async actualizarEstadoPlan(referencia) {
+        try {
+          const plan = this.planes.find(p => p.referencia === referencia);
+          if (!plan) return;
+          
+          const estadoActual = plan.estado || ESTADOS.SIMULADO;
+          
+          // Crear un modal simple para actualizar el estado
+          const modalHtml = `
+            <div class="modal" id="modalActualizarEstado" style="display: flex;">
+              <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                  <h3>Actualizar Estado - ${referencia}</h3>
+                  <button type="button" class="btn btn-icon" onclick="document.getElementById('modalActualizarEstado').remove()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <div class="campo mb-2">
+                    <label>Estado actual</label>
+                    <span class="estado-badge ${estadoActual}">${this.obtenerTextoEstado(estadoActual)}</span>
+                  </div>
+                  
+                  <div class="campo mb-2">
+                    <label for="nuevoEstado">Nuevo estado</label>
+                    <select id="nuevoEstado" class="form-control">
+                      ${Object.entries(ESTADOS).map(([key, value]) => 
+                        `<option value="${value}" ${value === estadoActual ? 'disabled' : ''}>
+                          ${this.obtenerTextoEstado(value)}
+                        </option>`
+                      ).join('')}
+                    </select>
+                  </div>
+                  
+                  <div class="campo mb-2">
+                    <label for="notasEstado">Notas (opcional)</label>
+                    <textarea id="notasEstado" rows="3" placeholder="Añade cualquier información relevante..."></textarea>
+                  </div>
+                  
+                  <div style="text-align: right; margin-top: 1.5rem;">
+                    <button class="btn btn-secundario" onclick="document.getElementById('modalActualizarEstado').remove()">
+                      Cancelar
+                    </button>
+                    <button class="btn btn-primario" onclick="app.guardarNuevoEstado('${referencia}')">
+                      Actualizar Estado
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+          console.error('Error actualizando estado del plan:', error);
+        }
+      }
+
+      async guardarNuevoEstado(referencia) {
+        try {
+          const nuevoEstadoElement = document.getElementById('nuevoEstado');
+          const notasElement = document.getElementById('notasEstado');
+          
+          if (!nuevoEstadoElement || !notasElement) return;
+          
+          const nuevoEstado = nuevoEstadoElement.value;
+          const notas = notasElement.value;
+          
+          // Buscar el plan
+          const planIndex = this.planes.findIndex(p => p.referencia === referencia);
+          if (planIndex === -1) return;
+          
+          // Actualizar el estado
+          this.planes[planIndex].estado = nuevoEstado;
+          this.planes[planIndex].ultimaActualizacion = new Date().toISOString();
+          
+          // Añadir evento al historial
+          if (!this.planes[planIndex].historial) {
+            this.planes[planIndex].historial = [];
+          }
+          
+          this.planes[planIndex].historial.push({
+            fecha: new Date().toISOString(),
+            tipo: 'cambio_estado',
+            estado: nuevoEstado,
+            notas: notas,
+            usuario: 'Usuario Actual' // En producción, usar el usuario autenticado
+          });
+          
+          // Guardar fechas específicas según el estado
+          switch(nuevoEstado) {
+            case ESTADOS.CONTRATADO:
+              this.planes[planIndex].fechaContratacion = new Date().toISOString();
+              break;
+            case ESTADOS.EN_NEGOCIACION:
+              this.planes[planIndex].fechaNegociacion = new Date().toISOString();
+              break;
+            case ESTADOS.APROBADO:
+              this.planes[planIndex].fechaAprobacion = new Date().toISOString();
+              break;
+            case ESTADOS.EN_PAGO:
+              this.planes[planIndex].fechaPrimerPago = new Date().toISOString();
+              break;
+            case ESTADOS.COMPLETADO:
+              this.planes[planIndex].fechaCompletado = new Date().toISOString();
+              break;
+            case ESTADOS.CANCELADO:
+              this.planes[planIndex].fechaCancelacion = new Date().toISOString();
+              this.planes[planIndex].motivoCancelacion = notas;
+              break;
+          }
+          
+          // Guardar en GitHub si estamos online
+          if (this.online) {
+            try {
+              await this.guardarPlanEnGitHub(this.planes[planIndex]);
+              this.mostrarNotificacion('Estado actualizado correctamente', 'success');
+            } catch (error) {
+              console.error('Error actualizando estado:', error);
+              this.mostrarNotificacion('Error al actualizar el estado', 'error');
+            }
+          } else {
+            // Guardar localmente
+            this.guardarPlanLocal(this.planes[planIndex]);
+            this.mostrarNotificacion('Estado actualizado localmente', 'warning');
+          }
+          
+          // Cerrar modal y actualizar vistas
+          const modalActualizarEstado = document.getElementById('modalActualizarEstado');
+          if (modalActualizarEstado) {
+            modalActualizarEstado.remove();
+          }
+          this.actualizarTablaSeguimiento();
+          this.actualizarDashboard();
+        } catch (error) {
+          console.error('Error guardando nuevo estado:', error);
+        }
+      }
+
+      descargarPDFPlan(referencia) {
+        const plan = this.planes.find(p => p.referencia === referencia);
+        if (!plan) return;
+        
+        this.planActual = plan;
+        this.descargarPDF();
+      }
+
+      // ==================== GESTIÓN DE DEUDAS ====================
+      agregarFilaDeuda(datos = {}) {
+        try {
+          const tbody = safeGetElement('tablaDeudas', true);
+          if (!tbody) return;
+          
+          const fila = document.createElement('tr');
+          
+          fila.innerHTML = `
+            <td>
+              <input type="text" class="contrato" value="${datos.contrato || ''}" 
+                     placeholder="Ej: 1234567890" required>
+            </td>
+            <td>
+              <select class="producto" required>
+                ${CONFIG.TIPOS_PRODUCTO.map(p => 
+                  `<option value="${p.tipo}" ${datos.producto === p.tipo ? 'selected' : ''}>${p.tipo}</option>`
+                ).join('')}
+              </select>
+            </td>
+            <td>
+              <select class="entidad" required>
+                ${CONFIG.ENTIDADES.map(e => 
+                  `<option value="${e}" ${datos.entidad === e ? 'selected' : ''}>${e}</option>`
+                ).join('')}
+              </select>
+            </td>
+            <td>
+              <input type="number" class="importe" min="0" step="0.01" 
+                     value="${datos.importe || ''}" placeholder="0,00" required>
+            </td>
+            <td>
+              <input type="number" class="descuento" min="0" max="100" 
+                     value="${datos.descuento || ''}" placeholder="0" required>
+            </td>
+            <td class="importe-descuento text-right">0,00 €</td>
+            <td>
+              <button type="button" class="btn btn-icon btn-danger" title="Eliminar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </td>
+          `;
+
+          // Event listeners
+          const inputs = fila.querySelectorAll('input, select');
+          inputs.forEach(input => {
+            input.addEventListener('input', () => this.actualizarFila(fila));
+            input.addEventListener('change', () => this.actualizarFila(fila));
+          });
+
+          fila.querySelector('.btn-danger').addEventListener('click', () => {
+            if (tbody.children.length > 1) {
+              fila.remove();
+              this.actualizarTotales();
+            } else {
+              this.mostrarNotificacion('Debe mantener al menos una deuda', 'warning');
+            }
+          });
+
+          tbody.appendChild(fila);
+          this.actualizarFila(fila);
+        } catch (error) {
+          console.error('Error agregando fila de deuda:', error);
+        }
+      }
+
+      actualizarFila(fila) {
+        try {
+          const productoElement = fila.querySelector('.producto');
+          const importeElement = fila.querySelector('.importe');
+          const descuentoElement = fila.querySelector('.descuento');
+          const importeDescuentoElement = fila.querySelector('.importe-descuento');
+          
+          if (!productoElement || !importeElement || !descuentoElement || !importeDescuentoElement) return;
+          
+          const producto = productoElement.value;
+          const importe = parseFloat(importeElement.value) || 0;
+          let descuento = parseFloat(descuentoElement.value) || 0;
+          
+          // Validar descuento máximo
+          const tipoProducto = CONFIG.TIPOS_PRODUCTO.find(tp => tp.tipo === producto);
+          const maxDescuento = tipoProducto ? tipoProducto.maxDescuento : 100;
+          
+          if (descuento > maxDescuento) {
+            descuento = maxDescuento;
+            descuentoElement.value = maxDescuento;
+            this.mostrarNotificacion(
+              `Descuento máximo para ${producto}: ${maxDescuento}%`, 
+              'warning'
+            );
+          }
+          
+          const importeConDescuento = importe * (1 - descuento / 100);
+          importeDescuentoElement.textContent = this.formatearMoneda(importeConDescuento);
+          
+          this.actualizarTotales();
+        } catch (error) {
+          console.error('Error actualizando fila:', error);
+        }
+      }
+
+      actualizarTotales() {
+        try {
+          const filas = document.querySelectorAll('#tablaDeudas tr');
+          let totalImporte = 0;
+          let totalImporteFinal = 0;
+          
+          filas.forEach(fila => {
+            const importeElement = fila.querySelector('.importe');
+            const descuentoElement = fila.querySelector('.descuento');
+            
+            if (importeElement && descuentoElement) {
+              const importe = parseFloat(importeElement.value) || 0;
+              const descuento = parseFloat(descuentoElement.value) || 0;
+              const importeFinal = importe * (1 - descuento / 100);
+              
+              totalImporte += importe;
+              totalImporteFinal += importeFinal;
+            }
+          });
+          
+          const descuentoMedio = totalImporte > 0 
+            ? ((totalImporte - totalImporteFinal) / totalImporte) * 100 
+            : 0;
+          
+          const totalImporteElement = safeGetElement('totalImporte');
+          const totalImporteFinalElement = safeGetElement('totalImporteFinal');
+          const totalDescuentoMedioElement = safeGetElement('totalDescuentoMedio');
+          const totalDeudasCountElement = safeGetElement('totalDeudasCount');
+          
+          if (totalImporteElement) totalImporteElement.textContent = this.formatearMoneda(totalImporte);
+          if (totalImporteFinalElement) totalImporteFinalElement.textContent = this.formatearMoneda(totalImporteFinal);
+          if (totalDescuentoMedioElement) totalDescuentoMedioElement.textContent = `${descuentoMedio.toFixed(1)}%`;
+          if (totalDeudasCountElement) {
+            totalDeudasCountElement.textContent = `${filas.length} deuda${filas.length !== 1 ? 's' : ''}`;
+          }
+        } catch (error) {
+          console.error('Error actualizando totales:', error);
+        }
+      }
+
+      // ==================== SIMULACIÓN ====================
+      simularPlan() {
+        try {
+          // Validar datos
+          const datosCliente = this.obtenerDatosCliente();
+          if (!datosCliente) return;
+
+          const deudas = this.obtenerDeudas();
+          if (!deudas) return;
+
+          const numCuotasElement = safeGetElement('numCuotas');
+          const numCuotas = numCuotasElement ? parseInt(numCuotasElement.value) : 12;
+
+          // Calcular totales
+          const totalImporte = deudas.reduce((sum, d) => sum + d.importe, 0);
+          const totalConDescuento = deudas.reduce((sum, d) => sum + d.importeConDescuento, 0);
+          const ahorro = totalImporte - totalConDescuento;
+          const descuentoMedio = (ahorro / totalImporte) * 100;
+          const cuotaMensual = totalConDescuento / numCuotas;
+
+          // Validar descuento total
+          if (descuentoMedio > CONFIG.MAX_DESCUENTO_TOTAL) {
+            this.mostrarNotificacion(
+              `El descuento total no puede superar el ${CONFIG.MAX_DESCUENTO_TOTAL}%`, 
+              'error'
+            );
+            return;
+          }
+
+          // Calcular comisiones
+          const comisionBase = Math.max(
+            ahorro * (this.comisiones.porcentaje / 100),
+            this.comisiones.minimo
+          );
+          const iva = comisionBase * (this.comisiones.iva / 100);
+          const comisionTotal = comisionBase + iva;
+
+          // Guardar simulación
+          this.simulacionActual = {
+            referencia: this.generarReferencia(),
+            fecha: new Date().toISOString(),
+            estado: ESTADOS.SIMULADO,
+            cliente: datosCliente,
+            numCuotas,
+            deudas,
+            totalImporte,
+            totalConDescuento,
+            ahorro,
+            descuentoMedio,
+            cuotaMensual,
+            comisiones: {
+              base: comisionBase,
+              iva: iva,
+              total: comisionTotal,
+              porcentaje: this.comisiones.porcentaje
+            }
+          };
+
+          // Mostrar simulación
+          this.mostrarSimulacion();
+
+        } catch (error) {
+          console.error('Error en simulación:', error);
+          this.mostrarNotificacion('Error al simular el plan', 'error');
+        }
+      }
+
+      mostrarSimulacion() {
+        try {
+          const sim = this.simulacionActual;
+          if (!sim) return;
+
+          // Verificar rentabilidad
+          const esRentable = sim.ahorro > sim.comisiones.total * 1.5; // Margen del 50%
+          const margenNeto = sim.ahorro - sim.comisiones.total;
+
+          const html = `
+            <div class="resumen-grid">
+              <div class="resumen-item">
+                <label>Deuda Total</label>
+                <div class="valor">${this.formatearMoneda(sim.totalImporte)}</div>
+              </div>
+              <div class="resumen-item">
+                <label>Total a Pagar</label>
+                <div class="valor">${this.formatearMoneda(sim.totalConDescuento)}</div>
+              </div>
+              <div class="resumen-item ${esRentable ? '' : 'warning'}">
+                <label>Ahorro Cliente</label>
+                <div class="valor">${this.formatearMoneda(sim.ahorro)}</div>
+              </div>
+              <div class="resumen-item">
+                <label>Descuento Medio</label>
+                <div class="valor">${sim.descuentoMedio.toFixed(1)}%</div>
+              </div>
+              <div class="resumen-item">
+                <label>Cuota Mensual</label>
+                <div class="valor">${this.formatearMoneda(sim.cuotaMensual)}</div>
+              </div>
+              <div class="resumen-item ${esRentable ? '' : 'danger'}">
+                <label>Margen Neto</label>
+                <div class="valor">${this.formatearMoneda(margenNeto)}</div>
+              </div>
+            </div
+
+
+
+            <div class="comisiones-desglose">
+              <h4>Desglose de Comisiones DMD</h4>
+              <table>
+                <tr>
+                  <td>Comisión base (${sim.comisiones.porcentaje}% del ahorro):</td>
+                  <td style="text-align: right;">${this.formatearMoneda(sim.comisiones.base)}</td>
+                </tr>
+                <tr>
+                  <td>IVA (${this.comisiones.iva}%):</td>
+                  <td style="text-align: right;">${this.formatearMoneda(sim.comisiones.iva)}</td>
+                </tr>
+                <tr class="total">
+                  <td><strong>Total comisiones:</strong></td>
+                  <td style="text-align: right;"><strong>${this.formatearMoneda(sim.comisiones.total)}</strong></td>
+                </tr>
+              </table>
+            </div>
+          `;
+
+          const simulacionContent = safeGetElement('simulacion-content');
+          if (simulacionContent) {
+            simulacionContent.innerHTML = html;
+          }
+
+          // Mostrar alerta si no es rentable
+          const alertaRentabilidad = safeGetElement('alertaRentabilidad');
+          const mensajeRentabilidad = safeGetElement('mensajeRentabilidad');
+          
+          if (alertaRentabilidad && mensajeRentabilidad) {
+            if (!esRentable) {
+              alertaRentabilidad.style.display = 'flex';
+              mensajeRentabilidad.textContent = 
+                `El ahorro del cliente (${this.formatearMoneda(sim.ahorro)}) es inferior a las comisiones + margen requerido. ` +
+                `Se recomienda ajustar los descuentos para obtener un margen mínimo de ${this.formatearMoneda(sim.comisiones.total * 1.5)}.`;
+            } else {
+              alertaRentabilidad.style.display = 'none';
+            }
+          }
+
+          // Mostrar sección y ocultar resultado final
+          const resultadoSimulacion = safeGetElement('resultadoSimulacion');
+          const resultadoFinal = safeGetElement('resultadoFinal');
+          
+          if (resultadoSimulacion) resultadoSimulacion.style.display = 'block';
+          if (resultadoFinal) resultadoFinal.style.display = 'none';
+          
+          // Cambiar visibilidad de botones
+          const btnSimular = safeGetElement('btnSimular');
+          const btnCalcular = safeGetElement('btnCalcular');
+          
+          if (btnSimular) btnSimular.style.display = 'none';
+          if (btnCalcular) btnCalcular.style.display = 'none';
+          
+          // Scroll a la simulación
+          if (resultadoSimulacion) {
+            resultadoSimulacion.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest' 
+            });
+          }
+        } catch (error) {
+          console.error('Error mostrando simulación:', error);
+        }
+      }
+
+      modificarSimulacion() {
+        try {
+          // Ocultar simulación y mostrar botón simular
+          const resultadoSimulacion = safeGetElement('resultadoSimulacion');
+          const btnSimular = safeGetElement('btnSimular');
+          
+          if (resultadoSimulacion) resultadoSimulacion.style.display = 'none';
+          if (btnSimular) btnSimular.style.display = 'inline-flex';
+          
+          // Enfocar en la primera deuda
+          const primerInput = document.querySelector('#tablaDeudas input');
+          if (primerInput) primerInput.focus();
+        } catch (error) {
+          console.error('Error modificando simulación:', error);
+        }
+      }
+
+      async confirmarYGuardarPlan() {
+        try {
+          if (!this.simulacionActual) {
+            this.mostrarNotificacion('No hay simulación activa', 'error');
+            return;
+          }
+
+          this.mostrarNotificacion('Guardando plan...', 'info');
+          
+          // Cambiar estado a contratado
+          this.simulacionActual.estado = ESTADOS.CONTRATADO;
+          this.simulacionActual.fechaContratacion = new Date().toISOString();
+          
+          // Usar los datos de la simulación para guardar
+          const plan = this.simulacionActual;
+          
+          if (this.online) {
+            await this.guardarPlanEnGitHub(plan);
+          } else {
+            this.guardarPlanLocal(plan);
+            this.mostrarNotificacion('Plan guardado localmente (sin conexión)', 'warning');
+          }
+
+          // Mostrar resultado final con resumen
+          this.mostrarResultadoFinal();
+
+          // Guardar referencia para PDF
+          this.planActual = plan;
+
+          // Actualizar dashboard
+          await this.loadPlanes();
+          this.actualizarDashboard();
+
+        } catch (error) {
+          console.error('Error al guardar plan:', error);
+          this.mostrarNotificacion('Error al guardar el plan', 'error');
+        }
+      }
+
+      // ==================== CÁLCULO Y GUARDADO ====================
+      async calcularYGuardarPlan() {
+        // Este método ya no se usa directamente, ahora se usa el flujo de simulación
+        this.simularPlan();
+      }
+
+      obtenerDatosCliente() {
+        try {
+          const nombreElement = safeGetElement('nombreDeudor');
+          const dniElement = safeGetElement('dniDeudor');
+          const emailElement = safeGetElement('emailDeudor');
+          
+          const nombre = nombreElement ? nombreElement.value.trim() : '';
+          const dni = dniElement ? dniElement.value.trim() : '';
+          const email = emailElement ? emailElement.value.trim() : '';
+
+          if (!nombre) {
+            this.mostrarNotificacion('Por favor, introduce el nombre del cliente', 'error');
+            return null;
+          }
+
+          if (!this.validarDNI(dni)) {
+            this.mostrarNotificacion('Por favor, introduce un DNI/NIE válido', 'error');
+            return null;
+          }
+
+          if (email && !this.validarEmail(email)) {
+            this.mostrarNotificacion('Por favor, introduce un email válido', 'error');
+            return null;
+          }
+
+          return { nombre, dni, email };
+        } catch (error) {
+          console.error('Error obteniendo datos del cliente:', error);
+          return null;
+        }
+      }
+
+      obtenerDeudas() {
+        try {
+          const filas = document.querySelectorAll('#tablaDeudas tr');
+          const deudas = [];
+          let hayErrores = false;
+
+          filas.forEach((fila, index) => {
+            const contratoElement = fila.querySelector('.contrato');
+            const productoElement = fila.querySelector('.producto');
+            const entidadElement = fila.querySelector('.entidad');
+            const importeElement = fila.querySelector('.importe');
+            const descuentoElement = fila.querySelector('.descuento');
+            
+            if (!contratoElement || !productoElement || !entidadElement || !importeElement || !descuentoElement) {
+              return; // Saltar filas incompletas
+            }
+            
+            const contrato = contratoElement.value.trim();
+            const producto = productoElement.value;
+            const entidad = entidadElement.value;
+            const importe = parseFloat(importeElement.value) || 0;
+            const descuento = parseFloat(descuentoElement.value) || 0;
+
+            if (!contrato) {
+              this.mostrarNotificacion(`Falta el número de contrato en la fila ${index + 1}`, 'error');
+              hayErrores = true;
+              return;
+            }
+
+            if (importe <= 0) {
+              this.mostrarNotificacion(`El importe debe ser mayor que 0 en la fila ${index + 1}`, 'error');
+              hayErrores = true;
+              return;
+            }
+
+            deudas.push({
+              contrato,
+              producto,
+              entidad,
+              importe,
+              descuento,
+              importeConDescuento: importe * (1 - descuento / 100)
+            });
+          });
+
+          return hayErrores ? null : deudas;
+        } catch (error) {
+          console.error('Error obteniendo deudas:', error);
+          return null;
+        }
+      }
+
+      async guardarPlanEnGitHub(plan) {
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/save-plan`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(plan)
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al guardar en GitHub');
+          }
+
+          const result = await response.json();
+          this.mostrarNotificacion('Plan guardado correctamente en GitHub', 'success');
+          
+          // Actualizar lista de planes
+          await this.loadPlanes();
+          
+          return result;
+        } catch (error) {
+          // Si falla, guardar localmente
+          this.guardarPlanLocal(plan);
+          throw error;
+        }
+      }
+
+      guardarPlanLocal(plan) {
+        try {
+          const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+          
+          // Buscar si ya existe el plan y actualizarlo
+          const planIndex = planesLocales.findIndex(p => p.referencia === plan.referencia);
+          if (planIndex >= 0) {
+            planesLocales[planIndex] = plan;
+          } else {
+            planesLocales.push(plan);
+          }
+          
+          localStorage.setItem('planes_locales', JSON.stringify(planesLocales));
+          localStorage.setItem('ultimo_plan', JSON.stringify(plan));
+        } catch (error) {
+          console.error('Error guardando plan localmente:', error);
+        }
+      }
+
+      // ==================== CARGA DE PLANES ====================
+      async loadPlanes() {
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/load-plans`);
+          if (!response.ok) throw new Error('Error al cargar planes');
+          
+          const data = await response.json();
+          this.planes = data.planes || [];
+          
+          // Mezclar con planes locales si hay
+          const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+          planesLocales.forEach(planLocal => {
+            if (!this.planes.find(p => p.referencia === planLocal.referencia)) {
+              this.planes.push(planLocal);
+            }
+          });
+          
+          // Actualizar última sincronización
+          const lastUpdate = safeGetElement('lastUpdate');
+          if (lastUpdate) {
+            lastUpdate.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
+          }
+            
+        } catch (error) {
+          console.error('Error cargando planes:', error);
+          // Cargar planes locales si hay
+          const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+          this.planes = planesLocales;
+        }
+      }
+
+      mostrarModalPlanes() {
+        const modal = safeGetElement('modalPlanes');
+        if (modal) {
+          modal.style.display = 'flex';
+          this.renderizarPlanes();
+        }
+      }
+
+      cerrarModalPlanes() {
+        const modal = safeGetElement('modalPlanes');
+        const buscarPlan = safeGetElement('buscarPlan');
+        
+        if (modal) modal.style.display = 'none';
+        if (buscarPlan) buscarPlan.value = '';
+      }
+
+      renderizarPlanes(filtro = '') {
+        try {
+          const container = safeGetElement('listaPlanes');
+          if (!container) return;
+          
+          const planesFiltrados = this.planes.filter(plan => {
+            if (!filtro) return true;
+            const busqueda = filtro.toLowerCase();
+            
+            // Manejar diferentes estructuras de datos
+            const nombreCliente = plan.cliente?.nombre || plan.cliente || 'Sin nombre';
+            const dniCliente = plan.cliente?.dni || plan.dni || '';
+            
+            return nombreCliente.toLowerCase().includes(busqueda) ||
+                   dniCliente.toLowerCase().includes(busqueda) ||
+                   plan.referencia.toLowerCase().includes(busqueda);
+          });
+
+          if (planesFiltrados.length === 0) {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 3rem; grid-column: 1/-1;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity: 0.3; margin-bottom: 1rem;">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                <p style="color: var(--text-secondary);">
+                  ${filtro ? 'No se encontraron planes con ese criterio' : 'No hay planes guardados'}
+                </p>
+              </div>
+            `;
+            return;
+          }
+
+          container.innerHTML = planesFiltrados.map(plan => {
+            const fecha = new Date(plan.fecha);
+            // Manejar diferentes estructuras de datos
+            const nombreCliente = plan.cliente?.nombre || plan.cliente || 'Sin nombre';
+            const totalImporte = plan.totalImporte || 0;
+            const descuentoMedio = plan.descuentoMedio || 0;
+            const estado = plan.estado || ESTADOS.SIMULADO;
+            
+            return `
+              <div class="plan-card" onclick="app.cargarPlan('${plan.referencia}')">
+                <div class="plan-card-header">
+                  <div>
+                    <div class="plan-card-title">${nombreCliente}</div>
+                    <div class="plan-card-ref">${plan.referencia}</div>
+                    <span class="estado-badge ${estado}" style="margin-top: 0.5rem;">
+                      ${this.obtenerTextoEstado(estado)}
+                    </span>
+                  </div>
+                  <div class="plan-card-date">
+                    ${fecha.toLocaleDateString('es-ES')}
+                  </div>
+                </div>
+                <div class="plan-card-stats">
+                  <div class="plan-stat">
+                    <div class="plan-stat-value">${this.formatearMoneda(totalImporte)}</div>
+                    <div class="plan-stat-label">Deuda Total</div>
+                  </div>
+                  <div class="plan-stat">
+                    <div class="plan-stat-value">${descuentoMedio.toFixed(1)}%</div>
+                    <div class="plan-stat-label">Descuento</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('Error renderizando planes:', error);
+        }
+      }
+
+      filtrarPlanes(busqueda) {
+        this.renderizarPlanes(busqueda);
+      }
+
+      cargarPlan(referencia) {
+        try {
+          const plan = this.planes.find(p => p.referencia === referencia);
+          if (!plan) return;
+
+          // Cargar datos del cliente
+          const nombreDeudor = safeGetElement('nombreDeudor');
+          const dniDeudor = safeGetElement('dniDeudor');
+          const emailDeudor = safeGetElement('emailDeudor');
+          const numCuotas = safeGetElement('numCuotas');
+          
+          if (nombreDeudor) nombreDeudor.value = plan.cliente?.nombre || plan.cliente || '';
+          if (dniDeudor) dniDeudor.value = plan.cliente?.dni || plan.dni || '';
+          if (emailDeudor) emailDeudor.value = plan.cliente?.email || '';
+          if (numCuotas) numCuotas.value = plan.numCuotas || 12;
+
+          // Limpiar tabla y cargar deudas
+          const tablaDeudas = safeGetElement('tablaDeudas');
+          if (tablaDeudas) {
+            tablaDeudas.innerHTML = '';
+            if (plan.deudas) {
+              plan.deudas.forEach(deuda => this.agregarFilaDeuda(deuda));
+            }
+          }
+
+          // Cerrar modal
+          this.cerrarModalPlanes();
+          this.mostrarNotificacion('Plan cargado correctamente', 'success');
+        } catch (error) {
+          console.error('Error cargando plan:', error);
+        }
+      }
+
+      // ==================== UTILIDADES ====================
+      formatearMoneda(valor) {
+        try {
+          return new Intl.NumberFormat("es-ES", CONFIG.FORMATO_MONEDA).format(valor);
+        } catch (error) {
+          return `${valor.toFixed(2)} €`;
+        }
+      }
+
+      generarReferencia() {
+        const fecha = new Date();
+        const año = fecha.getFullYear();
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `DMD-${año}${mes}${dia}-${random}`;
+      }
+
+      validarDNI(dni) {
+        const dniRegex = /^[0-9]{8}[A-Za-z]$/;
+        const nieRegex = /^[XYZ][0-9]{7}[A-Za-z]$/;
+        return dniRegex.test(dni) || nieRegex.test(dni);
+      }
+
+      validarEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+      }
+
+      mostrarNotificacion(mensaje, tipo = "info", duracion = 3000) {
+        try {
+          const iconos = {
+            info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+            success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+            error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+            warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+          };
+
+          const notificacion = document.createElement("div");
+          notificacion.className = `notificacion ${tipo}`;
+          notificacion.innerHTML = `${iconos[tipo]} <span>${mensaje}</span>`;
+          document.body.appendChild(notificacion);
+
+          setTimeout(() => {
+            notificacion.style.animation = "slideOut 0.3s ease-in forwards";
+            setTimeout(() => notificacion.remove(), 300);
+          }, duracion);
+        } catch (error) {
+          console.error('Error mostrando notificación:', error);
+        }
+      }
+
+      // ==================== FUNCIONES ADICIONALES ====================
+      reiniciarFormulario() {
+        try {
+          if (confirm('¿Está seguro de que desea reiniciar el formulario?')) {
+            const formulario = safeGetElement('formularioSimulador');
+            if (formulario) formulario.reset();
+            
+            const tablaDeudas = safeGetElement('tablaDeudas');
+            if (tablaDeudas) tablaDeudas.innerHTML = '';
+            
+            const resultadoFinal = safeGetElement('resultadoFinal');
+            const resultadoSimulacion = safeGetElement('resultadoSimulacion');
+            const btnSimular = safeGetElement('btnSimular');
+            const btnCalcular = safeGetElement('btnCalcular');
+            
+            if (resultadoFinal) resultadoFinal.style.display = 'none';
+            if (resultadoSimulacion) resultadoSimulacion.style.display = 'none';
+            if (btnSimular) btnSimular.style.display = 'inline-flex';
+            if (btnCalcular) btnCalcular.style.display = 'none';
+            
+            this.simulacionActual = null;
+            this.agregarFilaDeuda();
+            this.actualizarTotales();
+            this.mostrarNotificacion('Formulario reiniciado', 'info');
+          }
+        } catch (error) {
+          console.error('Error reiniciando formulario:', error);
+        }
+      }
+
+      guardarBorrador() {
+        try {
+          const nombreDeudor = safeGetElement('nombreDeudor');
+          const dniDeudor = safeGetElement('dniDeudor');
+          const emailDeudor = safeGetElement('emailDeudor');
+          const numCuotas = safeGetElement('numCuotas');
+          
+          const datosCliente = {
+            nombre: nombreDeudor ? nombreDeudor.value : '',
+            dni: dniDeudor ? dniDeudor.value : '',
+            email: emailDeudor ? emailDeudor.value : ''
+          };
+
+          const numCuotasValue = numCuotas ? numCuotas.value : 12;
+          const deudas = [];
+
+          document.querySelectorAll('#tablaDeudas tr').forEach(fila => {
+            const contratoElement = fila.querySelector('.contrato');
+            const productoElement = fila.querySelector('.producto');
+            const entidadElement = fila.querySelector('.entidad');
+            const importeElement = fila.querySelector('.importe');
+            const descuentoElement = fila.querySelector('.descuento');
+            
+            if (contratoElement && productoElement && entidadElement && importeElement && descuentoElement) {
+              deudas.push({
+                contrato: contratoElement.value,
+                producto: productoElement.value,
+                entidad: entidadElement.value,
+                importe: importeElement.value,
+                descuento: descuentoElement.value
+              });
+            }
+          });
+
+          const borrador = {
+            fecha: new Date().toISOString(),
+            cliente: datosCliente,
+            numCuotas: numCuotasValue,
+            deudas
+          };
+
+          localStorage.setItem('borrador_actual', JSON.stringify(borrador));
+          this.mostrarNotificacion('Borrador guardado correctamente', 'success');
+
+        } catch (error) {
+          console.error('Error al guardar borrador:', error);
+          this.mostrarNotificacion('Error al guardar el borrador', 'error');
+        }
+      }
+
+      mostrarResultadoFinal() {
+        try {
+          const plan = this.planActual || this.simulacionActual;
+          if (!plan) return;
+
+          const html = `
+            <div class="resumen-grid">
+              <div class="resumen-item">
+                <label>Cliente</label>
+                <div class="valor" style="font-size: 1.2rem;">${plan.cliente.nombre}</div>
+              </div>
+              <div class="resumen-item">
+                <label>Referencia</label>
+                <div class="valor" style="font-size: 1.2rem;">${plan.referencia}</div>
+              </div>
+              <div class="resumen-item">
+                <label>Cuota Mensual</label>
+                <div class="valor">${this.formatearMoneda(plan.cuotaMensual)}</div>
+              </div>
+              <div class="resumen-item">
+                <label>Ahorro Total</label>
+                <div class="valor" style="color: var(--success);">${this.formatearMoneda(plan.ahorro)}</div>
+              </div>
+            </div>
+          `;
+
+          const resumenFinal = safeGetElement('resumenFinal');
+          const resultadoSimulacion = safeGetElement('resultadoSimulacion');
+          const resultadoFinal = safeGetElement('resultadoFinal');
+          
+          if (resumenFinal) resumenFinal.innerHTML = html;
+          if (resultadoSimulacion) resultadoSimulacion.style.display = 'none';
+          if (resultadoFinal) {
+            resultadoFinal.style.display = 'block';
+            resultadoFinal.scrollIntoView({ behavior: 'smooth' });
+          }
+        } catch (error) {
+          console.error('Error mostrando resultado final:', error);
+        }
+      }
+
+      nuevoCliente() {
+        this.reiniciarFormulario();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      async descargarPDF() {
+        try {
+          if (!this.planActual && !this.simulacionActual) {
+            this.mostrarNotificacion('No hay un plan para descargar', 'warning');
+            return;
+          }
+
+          const plan = this.planActual || this.simulacionActual;
+          this.mostrarNotificacion('Generando PDF...', 'info');
+
+          // Verificar si jsPDF está disponible
+          if (typeof window.jspdf === 'undefined') {
+            this.mostrarNotificacion('Error: jsPDF no está disponible', 'error');
+            return;
+          }
+
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+
+          // Colores
+          const primaryColor = [0, 113, 227];
+          const textColor = [29, 29, 31];
+          const successColor = [52, 199, 89];
+
+          // Encabezado
+          pdf.setFillColor(...primaryColor);
+          pdf.rect(0, 0, 210, 40, 'F');
+
+          // Logo/Título
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(24);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('DMD ASESORES', 105, 20, { align: 'center' });
+          pdf.setFontSize(16);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Plan de Reestructuración de Deuda', 105, 30, { align: 'center' });
+
+          // Información del cliente
+          let y = 55;
+          pdf.setTextColor(...textColor);
+          pdf.setFontSize(14);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('INFORMACIÓN DEL CLIENTE', 20, y);
+
+          y += 10;
+          pdf.setFontSize(12);
+          pdf.setFont(undefined, 'normal');
+          pdf.text(`Cliente: ${plan.cliente.nombre}`, 20, y);
+          y += 8;
+          pdf.text(`DNI/NIE: ${plan.cliente.dni}`, 20, y);
+          y += 8;
+          pdf.text(`Email: ${plan.cliente.email || 'No especificado'}`, 20, y);
+          y += 8;
+          pdf.text(`Referencia: ${plan.referencia}`, 20, y);
+          y += 8;
+          pdf.text(`Fecha: ${new Date(plan.fecha).toLocaleDateString('es-ES')}`, 20, y);
+          y += 8;
+          pdf.text(`Estado: ${this.obtenerTextoEstado(plan.estado || ESTADOS.SIMULADO)}`, 20, y);
+
+          // Resumen financiero destacado
+          y += 15;
+          pdf.setFillColor(245, 248, 250);
+          pdf.rect(15, y - 5, 180, 60, 'F');
+          
+          pdf.setFont(undefined, 'bold');
+          pdf.text('RESUMEN DEL PLAN', 20, y);
+
+          y += 10;
+          pdf.setFont(undefined, 'normal');
+          
+          // Cuadro principal con información clave
+          const col1 = 20;
+          const col2 = 105;
+          
+          pdf.setFontSize(11);
+          pdf.text('Deuda Total Original:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(this.formatearMoneda(plan.totalImporte), col1 + 65, y, { align: 'right' });
+          
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Número de Cuotas:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(`${plan.numCuotas} meses`, col2 + 65, y, { align: 'right' });
+
+          y += 8;
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Total a Pagar:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(this.formatearMoneda(plan.totalConDescuento), col1 + 65, y, { align: 'right' });
+          
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Cuota Mensual:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.setFontSize(12);
+          pdf.setTextColor(...primaryColor);
+          pdf.text(this.formatearMoneda(plan.cuotaMensual), col2 + 65, y, { align: 'right' });
+
+          y += 8;
+          pdf.setTextColor(...textColor);
+          pdf.setFontSize(11);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Ahorro Total:', col1, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.setTextColor(...successColor);
+          pdf.text(this.formatearMoneda(plan.ahorro), col1 + 65, y, { align: 'right' });
+          
+          pdf.setTextColor(...textColor);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Descuento Medio:', col2, y);
+          pdf.setFont(undefined, 'bold');
+          pdf.text(`${plan.descuentoMedio.toFixed(1)}%`, col2 + 65, y, { align: 'right' });
+
+          // Detalle de deudas
+          y += 25;
+          pdf.setTextColor(...textColor);
+          pdf.setFont(undefined, 'bold');
+          pdf.setFontSize(12);
+          pdf.text('DETALLE DE DEUDAS INCLUIDAS', 20, y);
+          y += 10;
+
+          // Tabla de deudas
+          const headers = ['Contrato', 'Producto', 'Entidad', 'Original', '% Desc.', 'Final'];
+          const colWidths = [35, 35, 35, 28, 20, 27];
+
+          // Encabezados
+          pdf.setFillColor(...primaryColor);
+          pdf.rect(15, y - 6, 180, 10, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(10);
+          pdf.setFont(undefined, 'bold');
+
+          let xPos = 15;
+          headers.forEach((header, i) => {
+            pdf.text(header, xPos + 2, y);
+            xPos += colWidths[i];
+          });
+
+          // Datos
+          pdf.setTextColor(...textColor);
+          pdf.setFont(undefined, 'normal');
+          y += 10;
+
+          plan.deudas.forEach((deuda, index) => {
+            if (y > 250) {
+              pdf.addPage();
+              y = 20;
+            }
+
+            // Alternar color de fondo
+            if (index % 2 === 0) {
+              pdf.setFillColor(248, 249, 250);
+              pdf.rect(15, y - 5, 180, 8, 'F');
+            }
+
+            xPos = 15;
+            pdf.text(deuda.contrato.substring(0, 15), xPos + 2, y);
+            xPos += colWidths[0];
+            pdf.text(deuda.producto.substring(0, 15), xPos + 2, y);
+            xPos += colWidths[1];
+            pdf.text(deuda.entidad.substring(0, 15), xPos + 2, y);
+            xPos += colWidths[2];
+            pdf.text(this.formatearMoneda(deuda.importe), xPos + colWidths[3] - 2, y, { align: 'right' });
+            xPos += colWidths[3];
+            pdf.text(`${deuda.descuento}%`, xPos + colWidths[4] - 2, y, { align: 'right' });
+            xPos += colWidths[4];
+            pdf.setFont(undefined, 'bold');
+            pdf.text(this.formatearMoneda(deuda.importeConDescuento), xPos + colWidths[5] - 2, y, { align: 'right' });
+            pdf.setFont(undefined, 'normal');
+
+            y += 8;
+          });
+
+          // Nota importante
+          y += 15;
+          if (y > 230) {
+            pdf.addPage();
+            y = 20;
+          }
+
+          pdf.setFillColor(255, 243, 224);
+          pdf.rect(15, y - 5, 180, 30, 'F');
+          pdf.setFontSize(11);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('INFORMACIÓN IMPORTANTE', 20, y);
+          y += 7;
+          pdf.setFont(undefined, 'normal');
+          pdf.setFontSize(10);
+          pdf.text('• Este plan está sujeto a la aprobación final de las entidades acreedoras.', 20, y);
+          y += 6;
+          pdf.text('• El cliente debe mantener al día el pago de las cuotas acordadas.', 20, y);
+          y += 6;
+          pdf.text('• DMD Asesores realizará el seguimiento y gestión del plan.', 20, y);
+
+          // Pie de página
+          pdf.setFontSize(8);
+          pdf.setTextColor(150, 150, 150);
+          pdf.text('Este documento es confidencial y para uso exclusivo del cliente.', 105, 285, { align: 'center' });
+          pdf.text(`Generado el ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}`, 105, 290, { align: 'center' });
+
+          // Guardar PDF
+          pdf.save(`Plan_${plan.referencia}_${plan.cliente.nombre.replace(/\s+/g, '_')}.pdf`);
+          this.mostrarNotificacion('PDF descargado correctamente', 'success');
+
+        } catch (error) {
+          console.error('Error al generar PDF:', error);
+          this.mostrarNotificacion('Error al generar el PDF', 'error');
+        }
+      }
+
+      async enviarPorEmail() {
+        try {
+          const plan = this.planActual || this.simulacionActual;
+          if (!plan || !plan.cliente.email) {
+            this.mostrarNotificacion('No se ha especificado un email válido', 'error');
+            return;
+          }
+
+          // En producción, esto llamaría a una API para enviar el email
+          this.mostrarNotificacion(`Función de email en desarrollo. Email destino: ${plan.cliente.email}`, 'info');
+          
+          // Simulación de envío
+          setTimeout(() => {
+            this.mostrarNotificacion(`Plan enviado a ${plan.cliente.email} (simulado)`, 'success');
+          }, 2000);
+        } catch (error) {
+          console.error('Error enviando email:', error);
+        }
+      }
+
+      verEnGitHub() {
+        try {
+          if (this.planActual) {
+            const url = `https://github.com/${CONFIG.GITHUB_REPO}/tree/main/data/planes/${this.planActual.referencia}.json`;
+            window.open(url, '_blank');
+          }
+        } catch (error) {
+          console.error('Error abriendo GitHub:', error);
+        }
+      }
+
+      updateConnectionStatus(online = navigator.onLine) {
+        try {
+          this.online = online;
+          const badge = safeGetElement('statusBadge');
+          const text = safeGetElement('statusText');
+
+          if (badge && text) {
+            if (online) {
+              badge.classList.remove('offline');
+              text.textContent = 'Conectado';
+              
+              // Intentar sincronizar planes locales
+              this.syncLocalPlans();
+            } else {
+              badge.classList.add('offline');
+              text.textContent = 'Sin conexión';
+            }
+          }
+        } catch (error) {
+          console.error('Error actualizando estado de conexión:', error);
+        }
+      }
+
+      async syncLocalPlans() {
+        try {
+          const planesLocales = JSON.parse(localStorage.getItem('planes_locales') || '[]');
+          if (planesLocales.length === 0) return;
+
+          this.mostrarNotificacion('Sincronizando planes locales...', 'info');
+
+          for (const plan of planesLocales) {
+            try {
+              await this.guardarPlanEnGitHub(plan);
+            } catch (error) {
+              console.error('Error sincronizando plan:', error);
+            }
+          }
+
+          // Limpiar planes locales después de sincronizar
+          localStorage.removeItem('planes_locales');
+          await this.loadPlanes();
+        } catch (error) {
+          console.error('Error sincronizando planes locales:', error);
+        }
+      }
+
+      async syncData() {
+        try {
+          this.mostrarNotificacion('Sincronizando datos...', 'info');
+          
+          await this.loadConfiguration();
+          await this.loadPlanes();
+          this.actualizarDashboard();
+          this.mostrarNotificacion('Sincronización completada', 'success');
+        } catch (error) {
+          console.error('Error sincronizando:', error);
+          this.mostrarNotificacion('Error al sincronizar', 'error');
+        }
+      }
+
+      showInfo() {
+        try {
+          const info = `
+            <strong>Simulador DMD v3.0</strong><br>
+            <br>
+            <strong>Nuevas características:</strong><br>
+            • Dashboard analítico con KPIs<br>
+            • Sistema de seguimiento de planes<br>
+            • Estados del plan y timeline<br>
+            • Gráficos interactivos<br>
+            • Sincronización mejorada<br>
+            <br>
+            <strong>Repositorio:</strong><br>
+            ${CONFIG.GITHUB_REPO}<br>
+            <br>
+            <strong>Estado del sistema:</strong><br>
+            • Entidades: ${CONFIG.ENTIDADES.length}<br>
+            • Productos: ${CONFIG.TIPOS_PRODUCTO.length}<br>
+            • Planes guardados: ${this.planes.length}<br>
+            • Clientes activos: ${this.analytics.clientesActivos}
+          `;
+
+          const modal = document.createElement('div');
+          modal.className = 'modal';
+          modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+              <div class="modal-header">
+                <h3>Información del Sistema</h3>
+                <button class="btn btn-icon" onclick="this.closest('.modal').remove()">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p>${info}</p>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(modal);
+        } catch (error) {
+          console.error('Error mostrando información:', error);
+        }
+      }
+    }
+
+    // ==================== INICIALIZAR APLICACIÓN ====================
+    let app;
+
+    // Esperar a que el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        console.log('DOM cargado, iniciando aplicación...');
+        app = new DMDApp();
+        app.initApp();
+      } catch (error) {
+        console.error('Error crítico al inicializar la aplicación:', error);
+        
+        // Mostrar error en pantalla
+        const loadingScreen = safeGetElement('loadingScreen');
+        if (loadingScreen) {
+          loadingScreen.innerHTML = `
+            <div class="loading-content">
+              <h3 style="color: var(--danger);">Error al cargar la aplicación</h3>
+              <p>Por favor, recarga la página</p>
+              <button onclick="location.reload()" class="btn btn-primario">Recargar</button>
+            </div>
+          `;
+        }
+      }
+    });
+
+    // Añadir estilos para animaciones
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+      
+      input.error, select.error {
+        animation: shake 0.3s ease-in-out;
+      }
+      
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Función global para manejar errores no capturados
+    window.addEventListener('error', function(event) {
+      console.error('Error no capturado:', event.error);
+      if (app && app.mostrarNotificacion) {
+        app.mostrarNotificacion('Se produjo un error inesperado', 'error');
+      }
+    });
+
+    // Función global para manejar promesas rechazadas
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Promesa rechazada no manejada:', event.reason);
+      if (app && app.mostrarNotificacion) {
+        app.mostrarNotificacion('Error de conexión o procesamiento', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
