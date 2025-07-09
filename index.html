@@ -1085,6 +1085,7 @@
         const filas = document.querySelectorAll('#tablaDeudas tr');
         let totalImporte = 0;
         let totalImporteFinal = 0;
+        let hayErrores = false;
         
 filas.forEach((fila, index) => {
   const contrato = fila.querySelector('.contrato').value;
