@@ -1,8 +1,19 @@
 {
   "version": "2.0.0",
-  "totalPlanes": 4,
-  "ultimaActualizacion": "2025-07-09T22:22:26.997Z",
+  "totalPlanes": 5,
+  "ultimaActualizacion": "2025-07-09T22:24:29.531Z",
   "planes": [
+    {
+      "referencia": "DMD-20250710-0293",
+      "cliente": "Ramon Arias Abreu",
+      "dni": "53849974G",
+      "fecha": "2025-07-09T22:24:18.738Z",
+      "estado": "contratado",
+      "totalImporte": 8000,
+      "descuentoMedio": 25,
+      "cuotaMensual": 500,
+      "ahorro": 2000
+    },
     {
       "referencia": "DMD-20250710-7155",
       "cliente": "Ramon Arias Abreu",
