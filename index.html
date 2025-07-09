@@ -1744,7 +1744,36 @@
     }
 
     // ==================== INICIALIZAR APLICACIÓN ====================
-    const app = new DMDApp();
+    // BLINDAJE: Asegura todos los ids requeridos antes de instanciar la app
+document.addEventListener('DOMContentLoaded', function() {
+  const ids = [
+    'formularioSimulador', 'btnAgregarFila', 'btnCargarPlan', 'btnReAnalizar', 'btnGuardarBorrador',
+    'btnDescargarPDF', 'btnVerEnGitHub', 'btnSimular', 'btnConfirmarPlan', 'btnEnviarEmail',
+    'buscarPlan', 'buscarSeguimiento', 'filtroEstado', 'filtroPeriodo',
+    'modalPlanes', 'modalDetallesPlan', 'loadingScreen', 'lastUpdate', 'tablaDeudas', 'tablaSeguimiento',
+    'dashboardContainer', 'simuladorContainer', 'seguimientoContainer', 'totalPlanesSeguimiento',
+    'kpiPlanesCreados', 'kpiConversion', 'kpiAhorro', 'kpiComisiones', 'chartEvolucion',
+    'chartDistribucion', 'chartFunnel', 'listaPlanes', 'detalleReferencia', 'detallesPlanContent'
+    // Si usas más ids, añádelos aquí.
+  ];
+  ids.forEach(id => {
+    if (!document.getElementById(id)) {
+      const dummy = document.createElement(
+        id.startsWith('tabla') || id.endsWith('Container') || id === 'detallesPlanContent'
+          ? 'div'
+          : id.startsWith('chart')
+            ? 'canvas'
+            : id.startsWith('btn') ? 'button' : 'div'
+      );
+      dummy.id = id;
+      dummy.style.display = 'none';
+      document.body.appendChild(dummy);
+    }
+  });
+
+  window.app = new DMDApp();
+});
+
 
     // Añadir estilos para animaciones
     const style = document.createElement('style');
