@@ -1,8 +1,19 @@
 {
   "version": "2.0.0",
-  "totalPlanes": 6,
-  "ultimaActualizacion": "2025-07-10T08:15:42.529Z",
+  "totalPlanes": 7,
+  "ultimaActualizacion": "2025-07-10T09:40:53.875Z",
   "planes": [
+    {
+      "referencia": "DMD-20250710-1132",
+      "cliente": "Ramon ARIAS",
+      "dni": "53849973g",
+      "fecha": "2025-07-10T09:40:43.467Z",
+      "estado": "contratado",
+      "totalImporte": 87857,
+      "descuentoMedio": 50,
+      "cuotaMensual": 3660.7083333333335,
+      "ahorro": 43928.5
+    },
     {
       "referencia": "DMD-20250710-8288",
       "cliente": "Humberto Gil",
