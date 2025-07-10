@@ -1,0 +1,33 @@
+{
+  "referencia": "DMD-20250710-1132",
+  "fecha": "2025-07-10T09:40:43.467Z",
+  "estado": "contratado",
+  "cliente": {
+    "nombre": "Ramon ARIAS",
+    "dni": "53849973g",
+    "email": "humbertogilv@gmail.com"
+  },
+  "numCuotas": 12,
+  "deudas": [
+    {
+      "contrato": "123453",
+      "producto": "Micropréstamo",
+      "entidad": "BBVA",
+      "importe": 87857,
+      "descuento": 50,
+      "importeConDescuento": 43928.5
+    }
+  ],
+  "totalImporte": 87857,
+  "totalConDescuento": 43928.5,
+  "ahorro": 43928.5,
+  "descuentoMedio": 50,
+  "cuotaMensual": 3660.7083333333335,
+  "comisiones": {
+    "base": 8785.7,
+    "iva": 1844.997,
+    "total": 10630.697,
+    "porcentaje": 20
+  },
+  "fechaContratacion": "2025-07-10T09:40:51.765Z"
+}
