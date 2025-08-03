@@ -1,5 +1,9 @@
 // src/DMDApp.ts
-import { ESTADOS, normalizarEstado, getEstadoTexto } from './constants/estados';
+import { ESTADOS, normalizarEstado } from './constants/estados';
+import { SimuladorTable } from './components/SimuladorTable';
+import { uiService } from './services/uiService';
+import { graphService } from './services/graphService';
+import { storageService } from './services/storageService';
 
 export interface Plan {            // 🔹 modelo mínimo
   referencia: string;
@@ -149,4 +153,5 @@ export class DMDApp {
     return [...map.values()];
   }
 }
+
 
