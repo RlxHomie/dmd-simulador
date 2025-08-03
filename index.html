@@ -10,6 +10,590 @@
   <!-- External libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #0071e3;
+      --primary-hover: #0051a3;
+      --success: #34c759;
+      --danger: #ff3b30;
+      --warning: #ffcc00;
+      --background: #f5f5f7;
+      --surface: #ffffff;
+      --text-primary: #1d1d1f;
+      --text-secondary: #666;
+      --border: #e5e5ea;
+      --shadow: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+      --radius: 12px;
+      --radius-lg: 18px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+      background: var(--background); 
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    body { padding: 20px; }
+
+    /* Loading Screen */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--background);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    .loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: var(--text-primary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top: 3px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-lg);
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--success);
+      color: white;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .d-flex {
+      display: flex;
+    }
+
+    .gap-1 {
+      gap: 0.5rem;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 0.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+      gap: 0.5rem;
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .nav-tab:hover {
+      background: rgba(0, 113, 227, 0.1);
+      color: var(--primary);
+    }
+
+    .nav-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .nav-tab svg {
+      flex-shrink: 0;
+    }
+
+    /* Main Wrapper */
+    .main-wrapper {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Dashboard */
+    .dashboard-container {
+      display: none;
+    }
+
+    .dashboard-container.active {
+      display: block;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .kpi-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .kpi-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-change {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .kpi-change.positive {
+      color: var(--success);
+    }
+
+    .kpi-change.negative {
+      color: var(--danger);
+    }
+
+    /* Charts */
+    .chart-container {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .chart-filters {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chart-filter {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .chart-filter:hover {
+      background: var(--background);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .chart-filter.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* Simulador */
+    .contenedor-simulador {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .header-simulador {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo {
+      height: 60px;
+      margin-bottom: 1rem;
+    }
+
+    .header-simulador h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 0.5rem 0;
+    }
+
+    /* Form */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .campo label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .campo input {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      transition: var(--transition);
+      background: var(--surface);
+    }
+
+    .campo input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+    }
+
+    .help-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Tabla */
+    .tabla-deudas {
+      margin-top: 2rem;
+    }
+
+    .tabla-deudas h2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .tabla-scroll {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .seguimiento-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    .seguimiento-table th,
+    .seguimiento-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .seguimiento-table th {
+      background: var(--background);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .seguimiento-table td {
+      color: var(--text-secondary);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-primario {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primario:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secundario {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secundario:hover {
+      background: var(--background);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-icon {
+      padding: 0.5rem;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: var(--transition);
+    }
+
+    .btn-icon:hover {
+      background: var(--background);
+      color: var(--text-primary);
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      max-width: 800px;
+      width: 90%;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-hover);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      max-height: calc(80vh - 120px);
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      background: var(--surface);
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+    }
+
+    .planes-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .nav-tabs {
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .nav-tab {
+        justify-content: flex-start;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .chart-filters {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .status-bar {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+      }
+
+      .modal-content {
+        width: 95%;
+        margin: 1rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-simulador h1 {
+        font-size: 1.5rem;
+      }
+
+      .kpi-value {
+        font-size: 1.5rem;
+      }
+
+      .chart-title {
+        font-size: 1rem;
+      }
+
+      .seguimiento-table {
+        font-size: 0.875rem;
+      }
+
+      .seguimiento-table th,
+      .seguimiento-table td {
+        padding: 0.5rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Loading Screen -->
@@ -263,27 +847,28 @@
         <div class="tabla-deudas">
           <h2>
             <span>Planes en Seguimiento</span>
-          <span id="totalPlanesSeguimiento" style="font-size: 0.9rem; font-weight: normal;">0 planes</span>
-        </h2>
-        <div class="tabla-scroll">
-          <table class="seguimiento-table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Estado</th>
-                <th>Fecha Creación</th>
-                <th>Deuda Total</th>
-                <th>Cuota</th>
-                <th>Progreso</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tablaSeguimiento">
-              <!-- Se llenará dinámicamente -->
-            </tbody>
-          </table>
+            <span id="totalPlanesSeguimiento" style="font-size: 0.9rem; font-weight: normal;">0 planes</span>
+          </h2>
+          <div class="tabla-scroll">
+            <table class="seguimiento-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Fecha Creación</th>
+                  <th>Deuda Total</th>
+                  <th>Cuota</th>
+                  <th>Progreso</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaSeguimiento">
+                <!-- Se llenará dinámicamente -->
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 
@@ -328,1305 +913,7 @@
     </div>
   </div>
 
-  <!-- Inline CSS -->
-  <style>
-    :root {
-      --primary: #0071e3;
-      --primary-hover: #0051a3;
-      --success: #34c759;
-      --danger: #ff3b30;
-      --warning: #ffcc00;
-      --background: #f5f5f7;
-      --surface: #ffffff;
-      --text-primary: #1d1d1f;
-      --text-secondary: #666;
-      --border: #e5e5ea;
-      --shadow: 0 4px 12px rgba(0,0,0,0.1);
-      --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
-      --radius: 12px;
-      --radius-lg: 18px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    * { box-sizing: border-box; }
-    
-    html, body { 
-      margin: 0; 
-      padding: 0; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-      background: var(--background); 
-      color: var(--text-primary);
-      line-height: 1.6;
-    }
-    
-    body { padding: 20px; }
-
-    /* Navigation Tabs */
-    .nav-tabs {
-      display: flex;
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 0.5rem;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow);
-      gap: 0.5rem;
-    }
-
-    .nav-tab {
-      flex: 1;
-      padding: 0.75rem 1.5rem;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .nav-tab:hover {
-      background: rgba(0, 113, 227, 0.05);
-      color: var(--primary);
-    }
-
-    .nav-tab.active {
-      background: var(--primary);
-      color: white;
-    }
-
-    .nav-tab svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    /* Dashboard Styles */
-    .dashboard-container {
-      display: none;
-    }
-
-    .dashboard-container.active {
-      display: block;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .kpi-card {
-      background: var(--surface);
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-
-    .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-hover);
-    }
-
-    .kpi-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .kpi-title {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    .kpi-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.1;
-    }
-
-    .kpi-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .kpi-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-    }
-
-    .kpi-change {
-      font-size: 0.875rem;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .kpi-change.positive {
-      color: var(--success);
-    }
-
-    .kpi-change.negative {
-      color: var(--danger);
-    }
-
-    .chart-container {
-      background: var(--surface);
-      padding: 2rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      margin-bottom: 1.5rem;
-      height: 400px;
-      position: relative;
-    }
-
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .chart-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .chart-filters {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .chart-filter {
-      padding: 0.5rem 1rem;
-      background: var(--background);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .chart-filter:hover {
-      border-color: var(--primary);
-    }
-
-    .chart-filter.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    /* Timeline Styles */
-    .timeline-container {
-      background: var(--surface);
-      padding: 2rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      margin-top: 2rem;
-    }
-
-    .timeline {
-      position: relative;
-      padding: 1rem 0;
-    }
-
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 2rem;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: var(--border);
-    }
-
-    .timeline-item {
-      position: relative;
-      padding-left: 5rem;
-      padding-bottom: 2rem;
-    }
-
-    .timeline-item:last-child {
-      padding-bottom: 0;
-    }
-
-    .timeline-marker {
-      position: absolute;
-      left: 1rem;
-      top: 0;
-      width: 2rem;
-      height: 2rem;
-      background: var(--surface);
-      border: 2px solid var(--primary);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .timeline-marker.success {
-      border-color: var(--success);
-      background: var(--success);
-    }
-
-    .timeline-marker.warning {
-      border-color: var(--warning);
-      background: var(--warning);
-    }
-
-    .timeline-marker.danger {
-      border-color: var(--danger);
-      background: var(--danger);
-    }
-
-    .timeline-marker svg {
-      width: 16px;
-      height: 16px;
-      color: white;
-    }
-
-    .timeline-content {
-      background: var(--background);
-      padding: 1rem;
-      border-radius: var(--radius);
-    }
-
-    .timeline-date {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.25rem;
-    }
-
-    .timeline-title {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .timeline-description {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    /* Estado Badge */
-    .estado-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .estado-badge.plan_creado {
-      background: rgba(0, 113, 227, 0.1);
-      color: var(--primary);
-    }
-
-    .estado-badge.plan_contratado {
-      background: rgba(52, 199, 89, 0.1);
-      color: var(--success);
-    }
-
-    .estado-badge.primer_pago {
-      background: rgba(48, 209, 88, 0.1);
-      color: #30d158;
-    }
-
-    /* Tabla de seguimiento */
-    .seguimiento-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 2rem;
-    }
-
-    .seguimiento-table th {
-      text-align: left;
-      padding: 1rem;
-      background: var(--background);
-      font-weight: 600;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .seguimiento-table td {
-      padding: 1rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .seguimiento-table tr:hover {
-      background: var(--background);
-    }
-
-    .cliente-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .cliente-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-    }
-
-    .cliente-nombre {
-      font-weight: 500;
-    }
-
-    .cliente-ref {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    /* Loading Screen */
-    .loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--background);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      transition: opacity 0.3s ease;
-    }
-
-    .loading-content {
-      text-align: center;
-    }
-
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Status Bar */
-    .status-bar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0.75rem 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 1000;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .status-info {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      font-size: 0.875rem;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0.75rem;
-      background: var(--success);
-      color: white;
-      border-radius: 999px;
-      font-weight: 500;
-    }
-
-    .status-badge.offline {
-      background: var(--danger);
-    }
-
-    .main-wrapper {
-      margin-top: 60px;
-    }
-
-    /* Componentes Base */
-    .contenedor-simulador {
-      max-width: 1200px;
-      margin: 0 auto 40px;
-      background: var(--surface);
-      padding: 40px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-
-    .header-simulador {
-      text-align: center;
-      margin-bottom: 3rem;
-    }
-
-    .logo {
-      max-width: 120px;
-      height: auto;
-      border-radius: var(--radius);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
-    }
-
-    h1, h2, h3 {
-      margin: 0 0 1rem;
-      font-weight: 600;
-    }
-
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 1.5rem; }
-    h3 { font-size: 1.25rem; }
-
-    /* Formulario */
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .campo {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .campo label {
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .campo input,
-    .campo select,
-    .campo textarea {
-      padding: 12px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 16px;
-      transition: var(--transition);
-      background: var(--surface);
-    }
-
-    .campo input:focus,
-    .campo select:focus,
-    .campo textarea:focus {
-      border-color: var(--primary);
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
-    }
-
-    .campo input.error {
-      border-color: var(--danger);
-    }
-
-    .campo .help-text {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    /* Botones */
-    .btn {
-      cursor: pointer;
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: 500;
-      border-radius: var(--radius);
-      border: none;
-      transition: var(--transition);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      text-decoration: none;
-      white-space: nowrap;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s, height 0.6s;
-    }
-
-    .btn:active::before {
-      width: 300px;
-      height: 300px;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-primario {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primario:hover:not(:disabled) {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
-    }
-
-    .btn-secundario {
-      background: transparent;
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
-
-    .btn-secundario:hover:not(:disabled) {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: white;
-    }
-
-    .btn-success:hover:not(:disabled) {
-      background: #2ca548;
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-icon {
-      padding: 8px;
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Tabla */
-    .tabla-deudas {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      margin-bottom: 2rem;
-      background: var(--surface);
-      overflow: hidden;
-    }
-
-    .tabla-deudas h2 {
-      background: var(--primary);
-      color: white;
-      margin: 0;
-      padding: 1rem 1.5rem;
-      font-size: 1.25rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .tabla-scroll {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead {
-      background: #f8f9fa;
-    }
-
-    th {
-      text-align: left;
-      font-weight: 600;
-      padding: 1rem;
-      border-bottom: 2px solid var(--border);
-      color: var(--text-primary);
-      white-space: nowrap;
-    }
-
-    td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-
-    tbody tr {
-      transition: background-color 0.2s;
-    }
-
-    tbody tr:hover {
-      background: #f8f9fa;
-    }
-
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .tabla-deudas input,
-    .tabla-deudas select {
-      width: 100%;
-      min-width: 100px;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .tabla-deudas input[type="number"] {
-      text-align: right;
-    }
-
-    .tabla-deudas input[type="date"] {
-      min-width: 130px;
-    }
-
-    .importe-descuento {
-      font-weight: 600;
-      color: var(--success);
-      text-align: right;
-    }
-
-    /* Resultados */
-    .resultado-simulacion {
-      margin-top: 2rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, #fffbf0 0%, #fff4e0 100%);
-      border-radius: var(--radius-lg);
-      border: 1px solid #ffd93d;
-      display: none;
-      animation: slideUp 0.3s ease;
-    }
-
-    .resultado-simulacion h3 {
-      color: var(--warning);
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .resultado-final {
-      margin-top: 2rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, #f2f8ff 0%, #e8f4fd 100%);
-      border-radius: var(--radius-lg);
-      border: 1px solid #dae7fe;
-      display: none;
-      animation: slideUp 0.3s ease;
-    }
-
-    .resultado-final h3 {
-      color: var(--primary);
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .alerta-rentabilidad {
-      background: var(--danger);
-      color: white;
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin: 1.5rem 0;
-      display: flex;
-      gap: 1rem;
-      align-items: start;
-    }
-
-    .alerta-rentabilidad p {
-      margin: 0.5rem 0 0;
-      font-size: 0.875rem;
-      opacity: 0.9;
-    }
-
-    .resumen-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .resumen-item {
-      background: white;
-      padding: 1rem;
-      border-radius: var(--radius);
-      text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .resumen-item label {
-      display: block;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.25rem;
-    }
-
-    .resumen-item .valor {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .resumen-item.warning .valor {
-      color: var(--warning);
-    }
-
-    .resumen-item.danger .valor {
-      color: var(--danger);
-    }
-
-    .comisiones-desglose {
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin: 1rem 0;
-    }
-
-    .comisiones-desglose h4 {
-      font-size: 1rem;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary);
-    }
-
-    .comisiones-desglose table {
-      width: 100%;
-      font-size: 0.875rem;
-    }
-
-    .comisiones-desglose td {
-      padding: 0.25rem 0;
-    }
-
-    .comisiones-desglose .total {
-      font-weight: 600;
-      border-top: 1px solid var(--border);
-      padding-top: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .contenedor-simulador {
-        padding: 1.5rem;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .planes-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .status-bar {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1rem;
-      }
-
-      .main-wrapper {
-        margin-top: 100px;
-      }
-
-      .notificacion {
-        left: 20px;
-        right: 20px;
-        top: 120px;
-        max-width: none;
-      }
-
-      .nav-tabs {
-        flex-direction: column;
-      }
-
-      .nav-tab {
-        width: 100%;
-      }
-
-      .kpi-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .chart-container {
-        height: 300px;
-      }
-
-      h1 {
-        font-size: 1.75rem;
-      }
-
-      .tabla-scroll {
-        overflow-x: scroll;
-        -webkit-overflow-scrolling: touch;
-      }
-    }
-
-    /* Utilidades */
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    .mt-1 { margin-top: 0.5rem; }
-    .mt-2 { margin-top: 1rem; }
-    .mt-3 { margin-top: 1.5rem; }
-    .mb-1 { margin-bottom: 0.5rem; }
-    .mb-2 { margin-bottom: 1rem; }
-    .mb-3 { margin-bottom: 1.5rem; }
-    .d-none { display: none; }
-    .d-flex { display: flex; }
-    .justify-between { justify-content: space-between; }
-    .justify-center { justify-content: center; }
-    .align-center { align-items: center; }
-    .gap-1 { gap: 0.5rem; }
-    .gap-2 { gap: 1rem; }
-
-    /* Animaciones adicionales */
-    input.error, select.error {
-      animation: shake 0.3s ease-in-out;
-    }
-    
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      75% { transform: translateX(10px); }
-    }
-
-    /* Estilos para sincronización */
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    
-    .spin {
-      animation: spin 2s linear infinite;
-    }
-  </style>
-
-  <!-- Application script -->
   <script type="module" src="/src/app.ts"></script>
 </body>
-</html> translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+</html>
 
-    /* Modal */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      width: 90%;
-      max-width: 800px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-      animation: modalSlideUp 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes modalSlideUp {
-      from {
-        transform: translateY(50px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-body {
-      padding: 1.5rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    /* Lista de planes */
-    .search-box {
-      padding: 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      width: 100%;
-      margin-bottom: 1rem;
-      font-size: 16px;
-    }
-
-    .planes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1rem;
-    }
-
-    .plan-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      transition: var(--transition);
-      cursor: pointer;
-      background: white;
-    }
-
-    .plan-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow);
-      border-color: var(--primary);
-    }
-
-    .plan-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 1rem;
-    }
-
-    .plan-card-title {
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 0.25rem;
-    }
-
-    .plan-card-ref {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .plan-card-date {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    .plan-card-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .plan-stat {
-      text-align: center;
-    }
-
-    .plan-stat-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .plan-stat-label {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    /* Notificaciones */
-    .notificacion {
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      padding: 16px 24px;
-      border-radius: var(--radius);
-      font-weight: 500;
-      color: white;
-      z-index: 9999;
-      animation: slideIn 0.3s ease-out;
-      box-shadow: var(--shadow-hover);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      max-width: 400px;
-    }
-
-    .notificacion.info { background: var(--primary); }
-    .notificacion.success { background: var(--success); }
-    .notificacion.error { background: var(--danger); }
-    .notificacion.warning { background: var(--warning); color: var(--text-primary); }
-
-    @keyframes slideIn {
-      from {
-        transform:Deudas a Incluir</span>
-            <span id="totalDeudasCount" style="font-size: 0.9rem; font-weight: normal;">0 deudas</span>
-          </h2>
-          <div class="tabla-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nº Contrato</th>
-                  <th>Producto</th>
-                  <th>Entidad</th>
-                  <th>Antigüedad</th>
-                  <th>Importe (€)</th>
-                  <th>% Desc.</th>
-                  <th>Importe Final</th>
-                  <th style="width: 50px;">Acción</th>
-                </tr>
-              </thead>
-              <tbody id="tablaDeudas"></tbody>
-              <tfoot>
-                <tr style="background: #f8f9fa;">
-                  <td colspan="4" style="text-align: right; font-weight: 600;">Totales:</td>
-                  <td style="text-align: right; font-weight: 600;" id="totalImporte">0,00 €</td>
-                  <td style="text-align: center; font-weight: 600;" id="totalDescuentoMedio">0%</td>
-                  <td style="text-align: right; font-weight: 600; color: var(--success);" id="totalImporteFinal">0,00 €</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <div style="padding: 1rem;">
-            <button type="button" class="btn btn-secundario" id="btnAgregarFila">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Añadir Deuda
-            </button>
-            <button type="button" class="btn btn-secundario" id="btnCargarPlan">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Cargar Plan Guardado
-            </button>
-          </div>
-        </div>
-
-        <div class="d-flex justify-between align-center">
-          <button type="button" class="btn btn-secundario" id="btnReAnalizar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <polyline points="1 20 1 14 7 14"></polyline>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-            Reiniciar
-          </button>
-          <div class="d-flex gap-1">
-            <button type="button" class="btn btn-secundario" id="btnGuardarBorrador">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-              Guardar Borrador
-            </button>
-            <button type="button" class="btn btn-secundario" id="btnSimular">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
-              </svg>
-              Simular Plan
-            </button>
-            <button type="submit" class="btn btn-primario" id="btnCalcular" style="display: none;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Contratar y Guardar
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <!-- Vista previa de simulación -->
-      <div class="resultado-simulacion" id="resultadoSimulacion" style="display: none;">
-        <h3>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
-            <path d="M9 11H3v10h6V11zm4-8H7v18h6V3zm4 4h-6v14h6V7zm4 4h-6v10h6V11z"></path>
-          </svg>
-          Simulación del Plan
-        </h3>
-        <div id="simulacion-content"></div>
-        <div class="alerta-rentabilidad" id="alertaRentabilidad" style="display: none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-            <line x1="12" y1="9" x2="12" y2="13"></line>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-          </svg>
-          <div>
-            <strong>Atención: Plan poco rentable</strong>
-            <p id="mensajeRentabilidad"></p>
-          </div>
-        </div>
-        <div class="d-flex gap-1 mt-2 justify-between">
-          <button type="button" class="btn btn-secundario" onclick="app && app.modificarSimulacion ? app.modificarSimulacion() : console.log('App not ready')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            Modificar
-          </button>
-          <div class="d-flex gap-1">
-            <button type="button" class="btn btn-success" id="btnConfirmarPlan">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Confirmar y Contratar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="resultado-final" id="resultadoFinal">
-        <h3>✓ Plan Guardado Correctamente</h3>
-        <p>El plan ha sido guardado en el repositorio y está listo para ser enviado al cliente.</p>
-        <div class="resumen-final" id="resumenFinal"></div>
-        <div class="d-flex gap-1 mt-3 justify-center">
-          <button class="btn btn-success" id="btnDescargarPDF">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Descargar PDF
-          </button>
-          <button class="btn btn-secundario" id="btnEnviarEmail">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            Enviar por Email
-          </button>
-          <button class="btn btn-secundario" id="btnVerEnGitHub">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-            </svg>
-            Ver en GitHub
-          </button>
-          <button class="btn btn-primario" onclick="app && app.nuevoCliente ? app.nuevoCliente() : console.log('App not ready')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Nuevo Cliente
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Seguimiento Container -->
-    <div id="seguimientoContainer" class="contenedor-simulador" style="display: none;">
-      <h2>Seguimiento de Planes</h2>
-      
-      <!-- Filtros -->
-      <div class="form-grid mb-3">
-        <div class="campo">
-          <label>Buscar por cliente o referencia</label>
-          <input type="text" id="buscarSeguimiento" placeholder="Nombre, DNI o referencia...">
-        </div>
-        <div class="campo">
-          <label>Estado</label>
-          <select id="filtroEstado">
-            <option value="">Todos los estados</option>
-            <option value="plan_creado">Plan Creado</option>
-            <option value="plan_contratado">Plan Contratado</option>
-            <option value="primer_pago">Primer Pago</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label>Período</label>
-          <select id="filtroPeriodo">
-            <option value="7">Últimos 7 días</option>
-            <option value="30" selected>Últimos 30 días</option>
-            <option value="90">Últimos 90 días</option>
-            <option value="365">Último año</option>
-            <option value="0">Todo</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Tabla de seguimiento -->
-      <div class="tabla-deudas">
-        <h2>
-          <span>
