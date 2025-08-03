@@ -2,7 +2,6 @@ import { DMDApp } from './DMDApp';
 import { graphService } from './services/graphService';
 import { storageService } from './services/storageService';
 import { uiService } from './services/uiService';
-import './styles/main.css';
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -141,4 +140,5 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => {
   uiService.actualizarEstadoConexion(false);
   uiService.mostrarNotificacion('Trabajando sin conexión', 'warning');
+
 });
