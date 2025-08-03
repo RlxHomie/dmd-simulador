@@ -1155,7 +1155,7 @@
   <div class="main-wrapper">
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
-      <button class="nav-tab active" onclick="app && app.switchTab ? app.switchTab('dashboard') : console.log('App not ready')">
+      <button class="nav-tab active" data-tab="dashboard">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="7" height="7"></rect>
           <rect x="14" y="3" width="7" height="7"></rect>
@@ -1164,7 +1164,7 @@
         </svg>
         Dashboard
       </button>
-      <button class="nav-tab" onclick="app && app.switchTab ? app.switchTab('simulador') : console.log('App not ready')">
+      <button class="nav-tab" data-tab="simulador">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="20" x2="18" y2="10"></line>
           <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -1172,7 +1172,7 @@
         </svg>
         Simulador
       </button>
-      <button class="nav-tab" onclick="app && app.switchTab ? app.switchTab('seguimiento') : console.log('App not ready')">
+      <button class="nav-tab" data-tab="seguimiento">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
@@ -1621,5 +1621,62 @@
   </div>
 
   <script type="module" src="/src/app.ts"></script>
+  
+  <script>
+    // Sistema de navegación por pestañas independiente
+    document.addEventListener('DOMContentLoaded', function() {
+      const tabs = document.querySelectorAll('.nav-tab');
+      const containers = {
+        'dashboard': document.getElementById('dashboardContainer'),
+        'simulador': document.getElementById('simuladorContainer'),
+        'seguimiento': document.getElementById('seguimientoContainer')
+      };
+
+      function switchTab(targetTab) {
+        // Remover clase active de todas las pestañas
+        tabs.forEach(tab => tab.classList.remove('active'));
+        
+        // Ocultar todos los contenedores
+        Object.values(containers).forEach(container => {
+          if (container) {
+            container.style.display = 'none';
+            container.classList.remove('active');
+          }
+        });
+
+        // Activar la pestaña seleccionada
+        const activeTab = document.querySelector(`[data-tab="${targetTab}"]`);
+        if (activeTab) {
+          activeTab.classList.add('active');
+        }
+
+        // Mostrar el contenedor correspondiente
+        const activeContainer = containers[targetTab];
+        if (activeContainer) {
+          activeContainer.style.display = 'block';
+          if (targetTab === 'dashboard') {
+            activeContainer.classList.add('active');
+          }
+        }
+
+        console.log(`Cambiando a pestaña: ${targetTab}`);
+      }
+
+      // Agregar event listeners a las pestañas
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+          e.preventDefault();
+          const tabName = this.getAttribute('data-tab');
+          switchTab(tabName);
+        });
+      });
+
+      // Inicializar con dashboard activo
+      switchTab('dashboard');
+
+      // Hacer la función disponible globalmente por si se necesita
+      window.switchTab = switchTab;
+    });
+  </script>
 </body>
 </html>
