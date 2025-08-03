@@ -1623,8 +1623,9 @@
   <script type="module" src="/src/app.ts"></script>
   
   <script>
-    // Sistema de navegación por pestañas independiente
+    // Sistema completo de funcionalidad independiente
     document.addEventListener('DOMContentLoaded', function() {
+      // ==================== SISTEMA DE NAVEGACIÓN ====================
       const tabs = document.querySelectorAll('.nav-tab');
       const containers = {
         'dashboard': document.getElementById('dashboardContainer'),
@@ -1633,10 +1634,7 @@
       };
 
       function switchTab(targetTab) {
-        // Remover clase active de todas las pestañas
         tabs.forEach(tab => tab.classList.remove('active'));
-        
-        // Ocultar todos los contenedores
         Object.values(containers).forEach(container => {
           if (container) {
             container.style.display = 'none';
@@ -1644,38 +1642,464 @@
           }
         });
 
-        // Activar la pestaña seleccionada
         const activeTab = document.querySelector(`[data-tab="${targetTab}"]`);
-        if (activeTab) {
-          activeTab.classList.add('active');
-        }
+        if (activeTab) activeTab.classList.add('active');
 
-        // Mostrar el contenedor correspondiente
         const activeContainer = containers[targetTab];
         if (activeContainer) {
           activeContainer.style.display = 'block';
-          if (targetTab === 'dashboard') {
-            activeContainer.classList.add('active');
-          }
+          if (targetTab === 'dashboard') activeContainer.classList.add('active');
         }
-
-        console.log(`Cambiando a pestaña: ${targetTab}`);
       }
 
-      // Agregar event listeners a las pestañas
       tabs.forEach(tab => {
         tab.addEventListener('click', function(e) {
           e.preventDefault();
-          const tabName = this.getAttribute('data-tab');
-          switchTab(tabName);
+          switchTab(this.getAttribute('data-tab'));
         });
       });
 
-      // Inicializar con dashboard activo
-      switchTab('dashboard');
+      // ==================== SIMULADOR DE DEUDAS ====================
+      let contadorDeudas = 0;
+      let deudas = [];
 
-      // Hacer la función disponible globalmente por si se necesita
+      function agregarFilaDeuda() {
+        contadorDeudas++;
+        const tbody = document.getElementById('tablaDeudas');
+        const nuevaFila = document.createElement('tr');
+        nuevaFila.innerHTML = `
+          <td><input type="text" placeholder="Contrato-${contadorDeudas}" data-field="contrato" /></td>
+          <td>
+            <select data-field="producto">
+              <option value="">Seleccionar...</option>
+              <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+              <option value="Préstamo Personal">Préstamo Personal</option>
+              <option value="Hipoteca">Hipoteca</option>
+              <option value="Línea de Crédito">Línea de Crédito</option>
+              <option value="Financiación">Financiación</option>
+            </select>
+          </td>
+          <td>
+            <select data-field="entidad">
+              <option value="">Seleccionar...</option>
+              <option value="BBVA">BBVA</option>
+              <option value="Santander">Santander</option>
+              <option value="CaixaBank">CaixaBank</option>
+              <option value="Sabadell">Sabadell</option>
+              <option value="Bankinter">Bankinter</option>
+              <option value="ING">ING</option>
+              <option value="Otra">Otra</option>
+            </select>
+          </td>
+          <td><input type="date" data-field="antiguedad" /></td>
+          <td><input type="number" step="0.01" min="0" placeholder="0,00" data-field="importe" /></td>
+          <td><input type="number" step="0.1" min="0" max="100" value="0" data-field="descuento" />%</td>
+          <td class="importe-descuento" data-field="importeFinal">0,00 €</td>
+          <td>
+            <button type="button" class="btn btn-danger btn-icon" onclick="eliminarDeuda(this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </td>
+        `;
+
+        // Agregar event listeners para cálculos automáticos
+        const inputs = nuevaFila.querySelectorAll('input[data-field="importe"], input[data-field="descuento"]');
+        inputs.forEach(input => {
+          input.addEventListener('input', calcularTotales);
+        });
+
+        tbody.appendChild(nuevaFila);
+        actualizarContadorDeudas();
+      }
+
+      function eliminarDeuda(btn) {
+        btn.closest('tr').remove();
+        calcularTotales();
+        actualizarContadorDeudas();
+      }
+
+      function calcularTotales() {
+        const filas = document.querySelectorAll('#tablaDeudas tr');
+        let totalImporte = 0;
+        let totalImporteFinal = 0;
+        let totalDescuentos = 0;
+        let numDeudas = 0;
+
+        filas.forEach(fila => {
+          const importe = parseFloat(fila.querySelector('[data-field="importe"]')?.value || 0);
+          const descuento = parseFloat(fila.querySelector('[data-field="descuento"]')?.value || 0);
+          
+          if (importe > 0) {
+            const importeFinal = importe * (1 - descuento / 100);
+            fila.querySelector('[data-field="importeFinal"]').textContent = importeFinal.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + ' €';
+            
+            totalImporte += importe;
+            totalImporteFinal += importeFinal;
+            totalDescuentos += descuento;
+            numDeudas++;
+          }
+        });
+
+        // Actualizar totales en la tabla
+        document.getElementById('totalImporte').textContent = totalImporte.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' €';
+
+        document.getElementById('totalImporteFinal').textContent = totalImporteFinal.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' €';
+
+        const descuentoMedio = numDeudas > 0 ? (totalDescuentos / numDeudas) : 0;
+        document.getElementById('totalDescuentoMedio').textContent = descuentoMedio.toFixed(1) + '%';
+      }
+
+      function actualizarContadorDeudas() {
+        const numDeudas = document.querySelectorAll('#tablaDeudas tr').length;
+        document.getElementById('totalDeudasCount').textContent = `${numDeudas} deuda${numDeudas !== 1 ? 's' : ''}`;
+      }
+
+      function reiniciarFormulario() {
+        if (confirm('¿Estás seguro de que quieres reiniciar el formulario? Se perderán todos los datos.')) {
+          document.getElementById('formularioSimulador').reset();
+          document.getElementById('tablaDeudas').innerHTML = '';
+          document.getElementById('resultadoSimulacion').style.display = 'none';
+          document.getElementById('resultadoFinal').style.display = 'none';
+          contadorDeudas = 0;
+          calcularTotales();
+          actualizarContadorDeudas();
+          mostrarNotificacion('Formulario reiniciado correctamente', 'info');
+        }
+      }
+
+      function guardarBorrador() {
+        const datosFormulario = {
+          nombreDeudor: document.getElementById('nombreDeudor').value,
+          dniDeudor: document.getElementById('dniDeudor').value,
+          emailDeudor: document.getElementById('emailDeudor').value,
+          numCuotas: document.getElementById('numCuotas').value,
+          deudas: []
+        };
+
+        // Recopilar deudas
+        const filas = document.querySelectorAll('#tablaDeudas tr');
+        filas.forEach(fila => {
+          const deuda = {
+            contrato: fila.querySelector('[data-field="contrato"]')?.value || '',
+            producto: fila.querySelector('[data-field="producto"]')?.value || '',
+            entidad: fila.querySelector('[data-field="entidad"]')?.value || '',
+            antiguedad: fila.querySelector('[data-field="antiguedad"]')?.value || '',
+            importe: parseFloat(fila.querySelector('[data-field="importe"]')?.value || 0),
+            descuento: parseFloat(fila.querySelector('[data-field="descuento"]')?.value || 0)
+          };
+          if (deuda.importe > 0) {
+            datosFormulario.deudas.push(deuda);
+          }
+        });
+
+        // Guardar en localStorage
+        const borradores = JSON.parse(localStorage.getItem('borradoresPlanes') || '[]');
+        const referencia = `BORR-${Date.now()}`;
+        const borrador = {
+          referencia: referencia,
+          fecha: new Date().toISOString(),
+          datos: datosFormulario,
+          estado: 'borrador'
+        };
+
+        borradores.push(borrador);
+        localStorage.setItem('borradoresPlanes', JSON.stringify(borradores));
+        
+        mostrarNotificacion(`Borrador guardado con referencia: ${referencia}`, 'success');
+      }
+
+      function simularPlan() {
+        const nombreDeudor = document.getElementById('nombreDeudor').value;
+        const numCuotas = parseInt(document.getElementById('numCuotas').value);
+        const filas = document.querySelectorAll('#tablaDeudas tr');
+
+        if (!nombreDeudor) {
+          mostrarNotificacion('Por favor, ingresa el nombre del cliente', 'error');
+          return;
+        }
+
+        if (filas.length === 0) {
+          mostrarNotificacion('Agrega al menos una deuda para simular', 'error');
+          return;
+        }
+
+        // Calcular simulación
+        let totalOriginal = 0;
+        let totalFinal = 0;
+        let deudas = [];
+
+        filas.forEach(fila => {
+          const importe = parseFloat(fila.querySelector('[data-field="importe"]')?.value || 0);
+          const descuento = parseFloat(fila.querySelector('[data-field="descuento"]')?.value || 0);
+          
+          if (importe > 0) {
+            const importeFinal = importe * (1 - descuento / 100);
+            totalOriginal += importe;
+            totalFinal += importeFinal;
+            
+            deudas.push({
+              contrato: fila.querySelector('[data-field="contrato"]')?.value || '',
+              producto: fila.querySelector('[data-field="producto"]')?.value || '',
+              entidad: fila.querySelector('[data-field="entidad"]')?.value || '',
+              importeOriginal: importe,
+              importeFinal: importeFinal,
+              descuento: descuento
+            });
+          }
+        });
+
+        const ahorro = totalOriginal - totalFinal;
+        const cuotaMensual = totalFinal / numCuotas;
+        const comisionBase = totalFinal * 0.15; // 15% de comisión base
+        const comisionExito = ahorro * 0.25; // 25% del ahorro como comisión adicional
+        const comisionTotal = comisionBase + comisionExito;
+
+        // Mostrar resultado de simulación
+        const resultadoDiv = document.getElementById('resultadoSimulacion');
+        const contentDiv = document.getElementById('simulacion-content');
+        
+        contentDiv.innerHTML = `
+          <div class="resumen-grid">
+            <div class="resumen-item">
+              <label>Deuda Original</label>
+              <div class="valor">${totalOriginal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</div>
+            </div>
+            <div class="resumen-item warning">
+              <label>Deuda Final</label>
+              <div class="valor">${totalFinal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</div>
+            </div>
+            <div class="resumen-item">
+              <label>Ahorro Total</label>
+              <div class="valor">${ahorro.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</div>
+            </div>
+            <div class="resumen-item">
+              <label>Cuota Mensual</label>
+              <div class="valor">${cuotaMensual.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</div>
+            </div>
+          </div>
+          
+          <div class="comisiones-desglose">
+            <h4>Desglose de Comisiones</h4>
+            <table>
+              <tr><td>Comisión base (15%):</td><td style="text-align: right">${comisionBase.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</td></tr>
+              <tr><td>Comisión por ahorro (25%):</td><td style="text-align: right">${comisionExito.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</td></tr>
+              <tr class="total"><td><strong>Total comisiones:</strong></td><td style="text-align: right"><strong>${comisionTotal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</strong></td></tr>
+            </table>
+          </div>
+        `;
+
+        // Verificar rentabilidad
+        const alertaRentabilidad = document.getElementById('alertaRentabilidad');
+        if (comisionTotal < 500) {
+          alertaRentabilidad.style.display = 'flex';
+          document.getElementById('mensajeRentabilidad').textContent = 
+            `La comisión total de ${comisionTotal.toLocaleString('es-ES', {minimumFractionDigits: 2})} € está por debajo del mínimo recomendado de 500 €.`;
+        } else {
+          alertaRentabilidad.style.display = 'none';
+        }
+
+        resultadoDiv.style.display = 'block';
+        document.getElementById('btnCalcular').style.display = 'inline-flex';
+        
+        mostrarNotificacion('Simulación completada', 'success');
+      }
+
+      function confirmarPlan() {
+        const nombreDeudor = document.getElementById('nombreDeudor').value;
+        const referencia = `PLAN-${Date.now()}`;
+        
+        // Aquí iría la lógica para guardar el plan confirmado
+        const planesGuardados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
+        const planConfirmado = {
+          referencia: referencia,
+          fecha: new Date().toISOString(),
+          cliente: nombreDeudor,
+          estado: 'plan_contratado'
+        };
+        
+        planesGuardados.push(planConfirmado);
+        localStorage.setItem('planesConfirmados', JSON.stringify(planesGuardados));
+        
+        document.getElementById('resultadoSimulacion').style.display = 'none';
+        document.getElementById('resultadoFinal').style.display = 'block';
+        
+        mostrarNotificacion(`Plan contratado con referencia: ${referencia}`, 'success');
+      }
+
+      function nuevoCliente() {
+        reiniciarFormulario();
+        switchTab('simulador');
+      }
+
+      function mostrarModalPlanes() {
+        const borradores = JSON.parse(localStorage.getItem('borradoresPlanes') || '[]');
+        const planesConfirmados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
+        const todosPlanes = [...borradores, ...planesConfirmados];
+        
+        const listaPlanes = document.getElementById('listaPlanes');
+        listaPlanes.innerHTML = '';
+        
+        if (todosPlanes.length === 0) {
+          listaPlanes.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay planes guardados</p>';
+        } else {
+          todosPlanes.forEach(plan => {
+            const planCard = document.createElement('div');
+            planCard.className = 'plan-card';
+            planCard.innerHTML = `
+              <div class="plan-card-header">
+                <div>
+                  <div class="plan-card-title">${plan.datos?.nombreDeudor || plan.cliente || 'Sin nombre'}</div>
+                  <div class="plan-card-ref">${plan.referencia}</div>
+                </div>
+                <div class="plan-card-date">${new Date(plan.fecha).toLocaleDateString('es-ES')}</div>
+              </div>
+              <div class="estado-badge ${plan.estado}">${plan.estado.replace('_', ' ').toUpperCase()}</div>
+            `;
+            
+            planCard.addEventListener('click', () => cargarPlan(plan));
+            listaPlanes.appendChild(planCard);
+          });
+        }
+        
+        document.getElementById('modalPlanes').style.display = 'flex';
+      }
+
+      function cargarPlan(plan) {
+        if (plan.datos) {
+          document.getElementById('nombreDeudor').value = plan.datos.nombreDeudor || '';
+          document.getElementById('dniDeudor').value = plan.datos.dniDeudor || '';
+          document.getElementById('emailDeudor').value = plan.datos.emailDeudor || '';
+          document.getElementById('numCuotas').value = plan.datos.numCuotas || 12;
+          
+          // Limpiar tabla actual
+          document.getElementById('tablaDeudas').innerHTML = '';
+          
+          // Cargar deudas
+          if (plan.datos.deudas) {
+            plan.datos.deudas.forEach(deuda => {
+              agregarFilaDeuda();
+              const ultimaFila = document.querySelector('#tablaDeudas tr:last-child');
+              ultimaFila.querySelector('[data-field="contrato"]').value = deuda.contrato || '';
+              ultimaFila.querySelector('[data-field="producto"]').value = deuda.producto || '';
+              ultimaFila.querySelector('[data-field="entidad"]').value = deuda.entidad || '';
+              ultimaFila.querySelector('[data-field="antiguedad"]').value = deuda.antiguedad || '';
+              ultimaFila.querySelector('[data-field="importe"]').value = deuda.importe || '';
+              ultimaFila.querySelector('[data-field="descuento"]').value = deuda.descuento || '';
+            });
+          }
+          
+          calcularTotales();
+          cerrarModalPlanes();
+          mostrarNotificacion('Plan cargado correctamente', 'success');
+        }
+      }
+
+      function cerrarModalPlanes() {
+        document.getElementById('modalPlanes').style.display = 'none';
+      }
+
+      function cerrarModalDetalles() {
+        document.getElementById('modalDetallesPlan').style.display = 'none';
+      }
+
+      // ==================== SISTEMA DE NOTIFICACIONES ====================
+      function mostrarNotificacion(mensaje, tipo = 'info') {
+        // Eliminar notificación existente si la hay
+        const existente = document.querySelector('.notificacion');
+        if (existente) existente.remove();
+
+        const notificacion = document.createElement('div');
+        notificacion.className = `notificacion ${tipo}`;
+        
+        const iconos = {
+          info: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                   <circle cx="12" cy="12" r="10"></circle>
+                   <line x1="12" y1="16" x2="12" y2="12"></line>
+                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                 </svg>`,
+          success: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>`,
+          error: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  </svg>`,
+          warning: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>`
+        };
+
+        notificacion.innerHTML = `${iconos[tipo]} ${mensaje}`;
+        document.body.appendChild(notificacion);
+
+        setTimeout(() => {
+          if (notificacion.parentNode) {
+            notificacion.remove();
+          }
+        }, 4000);
+      }
+
+      // ==================== EVENT LISTENERS ====================
+      
+      // Botones principales del simulador
+      document.getElementById('btnAgregarFila').addEventListener('click', agregarFilaDeuda);
+      document.getElementById('btnCargarPlan').addEventListener('click', mostrarModalPlanes);
+      document.getElementById('btnReAnalizar').addEventListener('click', reiniciarFormulario);
+      document.getElementById('btnGuardarBorrador').addEventListener('click', guardarBorrador);
+      document.getElementById('btnSimular').addEventListener('click', simularPlan);
+      document.getElementById('btnConfirmarPlan').addEventListener('click', confirmarPlan);
+
+      // Botones de modales
+      document.querySelectorAll('[onclick*="cerrarModalPlanes"]').forEach(btn => {
+        btn.removeAttribute('onclick');
+        btn.addEventListener('click', cerrarModalPlanes);
+      });
+
+      document.querySelectorAll('[onclick*="cerrarModalDetalles"]').forEach(btn => {
+        btn.removeAttribute('onclick');
+        btn.addEventListener('click', cerrarModalDetalles);
+      });
+
+      // Botones de resultado final
+      const btnNuevoCliente = document.querySelector('[onclick*="nuevoCliente"]');
+      if (btnNuevoCliente) {
+        btnNuevoCliente.removeAttribute('onclick');
+        btnNuevoCliente.addEventListener('click', nuevoCliente);
+      }
+
+      // Hacer funciones disponibles globalmente
+      window.eliminarDeuda = eliminarDeuda;
       window.switchTab = switchTab;
+      window.cerrarModalPlanes = cerrarModalPlanes;
+      window.cerrarModalDetalles = cerrarModalDetalles;
+
+      // ==================== INICIALIZACIÓN ====================
+      switchTab('dashboard');
+      
+      // Agregar una fila de deuda por defecto
+      agregarFilaDeuda();
+
+      // Simular carga inicial
+      setTimeout(() => {
+        document.getElementById('loadingScreen').style.display = 'none';
+      }, 1000);
+
+      console.log('Sistema inicializado correctamente');
     });
   </script>
 </body>
