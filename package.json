@@ -30,6 +30,7 @@
     "typescript": "^5.3.3",
     "vite": "^5.1.3",
     "vitest": "^1.3.0"
+    "terser": "^5.30.4"
   },
   "repository": {
     "type": "git",
@@ -49,4 +50,5 @@
     "url": "https://github.com/RlxHomie/dmd-simulador/issues"
   },
   "homepage": "https://github.com/RlxHomie/dmd-simulador#readme"
+
 }
