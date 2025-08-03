@@ -1866,6 +1866,34 @@
         const comisionExito = ahorro * 0.25; // 25% del ahorro como comisión adicional
         const comisionTotal = comisionBase + comisionExito;
 
+        // Guardar plan simulado para seguimiento
+        const planSimulado = {
+          referencia: `SIM-${Date.now()}`,
+          fecha: new Date().toISOString(),
+          cliente: nombreDeudor,
+          dni: document.getElementById('dniDeudor').value,
+          email: document.getElementById('emailDeudor').value,
+          estado: 'plan_creado',
+          deudaTotal: totalOriginal,
+          deudaFinal: totalFinal,
+          ahorro: ahorro,
+          cuotaMensual: cuotaMensual,
+          numCuotas: numCuotas,
+          deudas: deudas,
+          progreso: 25, // 25% al simular
+          historial: [{
+            fecha: new Date().toISOString(),
+            accion: 'Plan simulado',
+            estado: 'plan_creado',
+            descripcion: `Plan simulado con ${deudas.length} deuda(s) por un total de ${totalOriginal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`
+          }]
+        };
+
+        // Guardar en planes confirmados para seguimiento
+        const planesGuardados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
+        planesGuardados.push(planSimulado);
+        localStorage.setItem('planesConfirmados', JSON.stringify(planesGuardados));
+
         // Mostrar resultado de simulación
         const resultadoDiv = document.getElementById('resultadoSimulacion');
         const contentDiv = document.getElementById('simulacion-content');
@@ -1913,7 +1941,11 @@
         resultadoDiv.style.display = 'block';
         document.getElementById('btnCalcular').style.display = 'inline-flex';
         
-        mostrarNotificacion('Simulación completada', 'success');
+        // Actualizar dashboard y seguimiento
+        actualizarDashboard();
+        actualizarTablaSeguimiento();
+        
+        mostrarNotificacion('Simulación completada y guardada en seguimiento', 'success');
       }
 
       function confirmarPlan() {
@@ -1921,65 +1953,98 @@
         const dniDeudor = document.getElementById('dniDeudor').value;
         const emailDeudor = document.getElementById('emailDeudor').value;
         const numCuotas = parseInt(document.getElementById('numCuotas').value);
-        const referencia = `PLAN-${Date.now()}`;
         
-        // Calcular datos del plan
-        const filas = document.querySelectorAll('#tablaDeudas tr');
-        let totalOriginal = 0;
-        let totalFinal = 0;
-        let deudas = [];
-
-        filas.forEach(fila => {
-          const importe = parseFloat(fila.querySelector('[data-field="importe"]')?.value || 0);
-          const descuento = parseFloat(fila.querySelector('[data-field="descuento"]')?.value || 0);
-          
-          if (importe > 0) {
-            const importeFinal = importe * (1 - descuento / 100);
-            totalOriginal += importe;
-            totalFinal += importeFinal;
-            
-            deudas.push({
-              contrato: fila.querySelector('[data-field="contrato"]')?.value || '',
-              producto: fila.querySelector('[data-field="producto"]')?.value || '',
-              entidad: fila.querySelector('[data-field="entidad"]')?.value || '',
-              importeOriginal: importe,
-              importeFinal: importeFinal,
-              descuento: descuento
-            });
-          }
-        });
-
-        const cuotaMensual = totalFinal / numCuotas;
-        const ahorro = totalOriginal - totalFinal;
-        
-        // Guardar el plan confirmado
+        // Buscar el plan simulado existente
         const planesGuardados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
-        const planConfirmado = {
-          referencia: referencia,
-          fecha: new Date().toISOString(),
-          cliente: nombreDeudor,
-          dni: dniDeudor,
-          email: emailDeudor,
-          estado: 'plan_contratado',
-          deudaTotal: totalOriginal,
-          deudaFinal: totalFinal,
-          ahorro: ahorro,
-          cuotaMensual: cuotaMensual,
-          numCuotas: numCuotas,
-          deudas: deudas,
-          progreso: 0
-        };
-        
-        planesGuardados.push(planConfirmado);
-        localStorage.setItem('planesConfirmados', JSON.stringify(planesGuardados));
+        const planSimuladoIndex = planesGuardados.findIndex(p => 
+          p.cliente === nombreDeudor && p.estado === 'plan_creado'
+        );
+
+        if (planSimuladoIndex !== -1) {
+          // Actualizar plan existente
+          const plan = planesGuardados[planSimuladoIndex];
+          plan.estado = 'plan_contratado';
+          plan.progreso = 50; // 50% al contratar
+          plan.fechaContratacion = new Date().toISOString();
+          
+          // Agregar entrada al historial
+          if (!plan.historial) plan.historial = [];
+          plan.historial.push({
+            fecha: new Date().toISOString(),
+            accion: 'Plan contratado',
+            estado: 'plan_contratado',
+            descripcion: `Cliente firmó el contrato de reestructuración. Cuota mensual: ${plan.cuotaMensual?.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`
+          });
+
+          localStorage.setItem('planesConfirmados', JSON.stringify(planesGuardados));
+        } else {
+          // Crear nuevo plan si no existe simulación previa
+          const filas = document.querySelectorAll('#tablaDeudas tr');
+          let totalOriginal = 0;
+          let totalFinal = 0;
+          let deudas = [];
+
+          filas.forEach(fila => {
+            const importe = parseFloat(fila.querySelector('[data-field="importe"]')?.value || 0);
+            const descuento = parseFloat(fila.querySelector('[data-field="descuento"]')?.value || 0);
+            
+            if (importe > 0) {
+              const importeFinal = importe * (1 - descuento / 100);
+              totalOriginal += importe;
+              totalFinal += importeFinal;
+              
+              deudas.push({
+                contrato: fila.querySelector('[data-field="contrato"]')?.value || '',
+                producto: fila.querySelector('[data-field="producto"]')?.value || '',
+                entidad: fila.querySelector('[data-field="entidad"]')?.value || '',
+                importeOriginal: importe,
+                importeFinal: importeFinal,
+                descuento: descuento
+              });
+            }
+          });
+
+          const cuotaMensual = totalFinal / numCuotas;
+          const ahorro = totalOriginal - totalFinal;
+          const referencia = `PLAN-${Date.now()}`;
+          
+          const planConfirmado = {
+            referencia: referencia,
+            fecha: new Date().toISOString(),
+            fechaContratacion: new Date().toISOString(),
+            cliente: nombreDeudor,
+            dni: dniDeudor,
+            email: emailDeudor,
+            estado: 'plan_contratado',
+            deudaTotal: totalOriginal,
+            deudaFinal: totalFinal,
+            ahorro: ahorro,
+            cuotaMensual: cuotaMensual,
+            numCuotas: numCuotas,
+            deudas: deudas,
+            progreso: 50, // 50% al contratar directamente
+            historial: [
+              {
+                fecha: new Date().toISOString(),
+                accion: 'Plan creado y contratado',
+                estado: 'plan_contratado',
+                descripcion: `Plan creado y contratado directamente con ${deudas.length} deuda(s) por un total de ${totalOriginal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`
+              }
+            ]
+          };
+          
+          planesGuardados.push(planConfirmado);
+          localStorage.setItem('planesConfirmados', JSON.stringify(planesGuardados));
+        }
         
         document.getElementById('resultadoSimulacion').style.display = 'none';
         document.getElementById('resultadoFinal').style.display = 'block';
         
-        // Actualizar tabla de seguimiento
+        // Actualizar dashboard y seguimiento
+        actualizarDashboard();
         actualizarTablaSeguimiento();
         
-        mostrarNotificacion(`Plan contratado con referencia: ${referencia}`, 'success');
+        mostrarNotificacion(`Plan contratado correctamente`, 'success');
       }
 
       function nuevoCliente() {
@@ -2113,7 +2178,7 @@
         // Llenar tabla
         planesFiltrados.forEach(plan => {
           const fecha = new Date(plan.fecha).toLocaleDateString('es-ES');
-          const progreso = plan.progreso || 0;
+          const progreso = getProgresoByEstado(plan.estado);
           const estadoBadge = getEstadoBadge(plan.estado);
           
           // Generar iniciales para el avatar
@@ -2160,9 +2225,9 @@
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
-                <button class="btn btn-success btn-icon" onclick="marcarProgreso('${plan.referencia}')" title="Actualizar progreso">
+                <button class="btn btn-success btn-icon" onclick="avanzarFase('${plan.referencia}')" title="Avanzar fase">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"></polyline>
+                    <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
                 </button>
               </div>
@@ -2173,13 +2238,22 @@
         });
       }
       
+      function getProgresoByEstado(estado) {
+        switch(estado) {
+          case 'plan_creado': return 25;
+          case 'plan_contratado': return 50;
+          case 'primer_pago': return 100;
+          default: return 0;
+        }
+      }
+      
       function getEstadoBadge(estado) {
         const badges = {
-          'plan_creado': '<span class="estado-badge plan_creado">Plan Creado</span>',
-          'plan_contratado': '<span class="estado-badge plan_contratado">Plan Contratado</span>',
-          'primer_pago': '<span class="estado-badge primer_pago">Primer Pago</span>'
+          'plan_creado': '<span class="estado-badge plan_creado">📋 Simulado (25%)</span>',
+          'plan_contratado': '<span class="estado-badge plan_contratado">✍️ Contratado (50%)</span>',
+          'primer_pago': '<span class="estado-badge primer_pago">💰 Primer Pago (100%)</span>'
         };
-        return badges[estado] || '<span class="estado-badge plan_creado">Desconocido</span>';
+        return badges[estado] || '<span class="estado-badge plan_creado">❓ Desconocido</span>';
       }
       
       function verDetallesPlan(referencia) {
@@ -2194,30 +2268,226 @@
         document.getElementById('detalleReferencia').textContent = referencia;
         
         const detallesContent = document.getElementById('detallesPlanContent');
+        
+        // Timeline del plan
+        const timelineHTML = generarTimeline(plan);
+        
         detallesContent.innerHTML = `
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
             <div style="background: var(--background); padding: 1rem; border-radius: var(--radius);">
               <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">CLIENTE</h4>
               <p style="margin: 0; font-weight: 600;">${plan.cliente}</p>
               <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">${plan.dni || 'DNI no registrado'}</p>
+              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">${plan.email || 'Email no registrado'}</p>
             </div>
             
             <div style="background: var(--background); padding: 1rem; border-radius: var(--radius);">
               <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">DEUDA TOTAL</h4>
               <p style="margin: 0; font-weight: 600; font-size: 1.25rem;">${plan.deudaTotal?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</p>
               <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--success);">Ahorro: ${plan.ahorro?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</p>
+              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--primary);">Final: ${plan.deudaFinal?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</p>
             </div>
             
             <div style="background: var(--background); padding: 1rem; border-radius: var(--radius);">
-              <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">CUOTA MENSUAL</h4>
+              <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">PLAN DE PAGO</h4>
               <p style="margin: 0; font-weight: 600; font-size: 1.25rem;">${plan.cuotaMensual?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</p>
-              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">${plan.numCuotas || 0} cuotas</p>
+              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">${plan.numCuotas || 0} cuotas mensuales</p>
             </div>
             
             <div style="background: var(--background); padding: 1rem; border-radius: var(--radius);">
-              <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">ESTADO</h4>
+              <h4 style="margin: 0 0 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">ESTADO ACTUAL</h4>
               <p style="margin: 0;">${getEstadoBadge(plan.estado)}</p>
-              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">Creado: ${new Date(plan.fecha).toLocaleDateString('es-ES')}</p>
+              <p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">
+                Progreso: ${getProgresoByEstado(plan.estado)}%
+              </p>
+            </div>
+          </div>
+          
+          <div class="timeline-container">
+            <h4>Historia del Plan</h4>
+            ${timelineHTML}
+          </div>
+          
+          ${plan.deudas && plan.deudas.length > 0 ? `
+            <h4 style="margin-top: 2rem;">Deudas Incluidas</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; font-size: 0.875rem;">
+                <thead>
+                  <tr style="background: var(--background);">
+                    <th style="padding: 0.75rem;">Contrato</th>
+                    <th style="padding: 0.75rem;">Producto</th>
+                    <th style="padding: 0.75rem;">Entidad</th>
+                    <th style="padding: 0.75rem; text-align: right;">Importe Original</th>
+                    <th style="padding: 0.75rem; text-align: right;">Descuento</th>
+                    <th style="padding: 0.75rem; text-align: right;">Importe Final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${plan.deudas.map(deuda => `
+                    <tr>
+                      <td style="padding: 0.75rem;">${deuda.contrato || '-'}</td>
+                      <td style="padding: 0.75rem;">${deuda.producto || '-'}</td>
+                      <td style="padding: 0.75rem;">${deuda.entidad || '-'}</td>
+                      <td style="padding: 0.75rem; text-align: right;">${deuda.importeOriginal?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</td>
+                      <td style="padding: 0.75rem; text-align: right;">${deuda.descuento || 0}%</td>
+                      <td style="padding: 0.75rem; text-align: right; color: var(--success); font-weight: 600;">${deuda.importeFinal?.toLocaleString('es-ES', {minimumFractionDigits: 2}) || '0,00'} €</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+        `;
+        
+        document.getElementById('modalDetallesPlan').style.display = 'flex';
+      }
+      
+      function generarTimeline(plan) {
+        if (!plan.historial || plan.historial.length === 0) {
+          return '<p style="color: var(--text-secondary); text-align: center;">No hay historial disponible</p>';
+        }
+        
+        return `
+          <div class="timeline">
+            ${plan.historial.map(evento => {
+              const fecha = new Date(evento.fecha).toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              
+              let markerClass = 'primary';
+              let icono = '📋';
+              
+              if (evento.estado === 'plan_contratado') {
+                markerClass = 'warning';
+                icono = '✍️';
+              } else if (evento.estado === 'primer_pago') {
+                markerClass = 'success';
+                icono = '💰';
+              }
+              
+              return `
+                <div class="timeline-item">
+                  <div class="timeline-marker ${markerClass}">
+                    <span style="font-size: 12px;">${icono}</span>
+                  </div>
+                  <div class="timeline-content">
+                    <div class="timeline-date">${fecha}</div>
+                    <div class="timeline-title">${evento.accion}</div>
+                    <div class="timeline-description">${evento.descripcion}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+      
+      function editarPlan(referencia) {
+        const planesConfirmados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
+        const planIndex = planesConfirmados.findIndex(p => p.referencia === referencia);
+        
+        if (planIndex === -1) {
+          mostrarNotificacion('Plan no encontrado', 'error');
+          return;
+        }
+        
+        const plan = planesConfirmados[planIndex];
+        
+        // Agregar entrada al historial de modificación
+        if (!plan.historial) plan.historial = [];
+        plan.historial.push({
+          fecha: new Date().toISOString(),
+          accion: 'Plan modificado',
+          estado: plan.estado,
+          descripcion: 'El plan fue cargado en el simulador para realizar modificaciones'
+        });
+        
+        localStorage.setItem('planesConfirmados', JSON.stringify(planesConfirmados));
+        
+        // Cargar datos del plan en el formulario
+        document.getElementById('nombreDeudor').value = plan.cliente;
+        document.getElementById('dniDeudor').value = plan.dni || '';
+        document.getElementById('emailDeudor').value = plan.email || '';
+        document.getElementById('numCuotas').value = plan.numCuotas || 12;
+        
+        // Limpiar tabla actual
+        document.getElementById('tablaDeudas').innerHTML = '';
+        
+        // Cargar deudas si existen
+        if (plan.deudas && plan.deudas.length > 0) {
+          plan.deudas.forEach(deuda => {
+            agregarFilaDeuda();
+            const ultimaFila = document.querySelector('#tablaDeudas tr:last-child');
+            ultimaFila.querySelector('[data-field="contrato"]').value = deuda.contrato || '';
+            ultimaFila.querySelector('[data-field="producto"]').value = deuda.producto || '';
+            ultimaFila.querySelector('[data-field="entidad"]').value = deuda.entidad || '';
+            ultimaFila.querySelector('[data-field="importe"]').value = deuda.importeOriginal || '';
+            ultimaFila.querySelector('[data-field="descuento"]').value = deuda.descuento || '';
+          });
+        } else {
+          agregarFilaDeuda(); // Agregar al menos una fila vacía
+        }
+        
+        calcularTotales();
+        switchTab('simulador');
+        mostrarNotificacion(`Editando plan ${referencia}`, 'info');
+      }
+      
+      function avanzarFase(referencia) {
+        const planesConfirmados = JSON.parse(localStorage.getItem('planesConfirmados') || '[]');
+        const planIndex = planesConfirmados.findIndex(p => p.referencia === referencia);
+        
+        if (planIndex === -1) {
+          mostrarNotificacion('Plan no encontrado', 'error');
+          return;
+        }
+        
+        const plan = planesConfirmados[planIndex];
+        let nuevoEstado = plan.estado;
+        let mensaje = '';
+        let descripcion = '';
+        
+        switch(plan.estado) {
+          case 'plan_creado':
+            nuevoEstado = 'plan_contratado';
+            mensaje = 'Plan marcado como contratado';
+            descripcion = 'El cliente firmó el contrato de reestructuración';
+            break;
+          case 'plan_contratado':
+            nuevoEstado = 'primer_pago';
+            mensaje = 'Primer pago registrado';
+            descripcion = 'El cliente realizó el primer pago del plan de reestructuración';
+            break;
+          case 'primer_pago':
+            mostrarNotificacion('El plan ya está en la fase final', 'warning');
+            return;
+        }
+        
+        // Actualizar plan
+        plan.estado = nuevoEstado;
+        plan.progreso = getProgresoByEstado(nuevoEstado);
+        
+        // Agregar entrada al historial
+        if (!plan.historial) plan.historial = [];
+        plan.historial.push({
+          fecha: new Date().toISOString(),
+          accion: mensaje,
+          estado: nuevoEstado,
+          descripcion: descripcion
+        });
+        
+        localStorage.setItem('planesConfirmados', JSON.stringify(planesConfirmados));
+        
+        // Actualizar dashboard y tabla
+        actualizarDashboard();
+        actualizarTablaSeguimiento();
+        
+        mostrarNotificacion(mensaje, 'success');
+      }Creado: ${new Date(plan.fecha).toLocaleDateString('es-ES')}</p>
             </div>
           </div>
           
@@ -2409,7 +2679,7 @@
       window.cerrarModalDetalles = cerrarModalDetalles;
       window.verDetallesPlan = verDetallesPlan;
       window.editarPlan = editarPlan;
-      window.marcarProgreso = marcarProgreso;
+      window.avanzarFase = avanzarFase;
 
       // ==================== INICIALIZACIÓN ====================
       switchTab('dashboard');
@@ -2417,7 +2687,8 @@
       // Agregar una fila de deuda por defecto
       agregarFilaDeuda();
 
-      // Inicializar tabla de seguimiento
+      // Inicializar dashboard y seguimiento
+      actualizarDashboard();
       actualizarTablaSeguimiento();
 
       // Simular carga inicial
