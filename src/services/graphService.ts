@@ -291,20 +291,15 @@ export class GraphService {
   private generateEmptyExcelContent(): ArrayBuffer {
     // This is a simplified approach - in production, use a library like ExcelJS
     // to generate proper Excel files
-    const headers = [
-      'Referencia', 'Cliente', 'DNI', 'Email', 'Fecha', 'Estado',
-      'Total Importe', 'Descuento Medio', 'Cuota Mensual', 'Ahorro',
-      'Última Actualización'
-    ];
     
     // For now, return empty buffer - implement proper Excel generation
     return new ArrayBuffer(0);
   }
 }
 
-// Create singleton instance
-export const graphService = new GraphService({
-  clientId: import.meta.env.VITE_AZURE_CLIENT_ID || '',
-  redirectUri: import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.origin,
-  scopes: ['Files.ReadWrite', 'offline_access', 'User.Read']
-});
+ // Create singleton instance
+ export const graphService = new GraphService({
+   clientId: import.meta.env.VITE_AZURE_CLIENT_ID || '',
+   redirectUri: import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.origin,
+   scopes: ['Files.ReadWrite', 'offline_access', 'User.Read']
+ });
