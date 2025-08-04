@@ -1,0 +1,27 @@
+{
+  "name": "dmd-asesores-spa",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de reestructuración de deuda para DMD Asesores",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . -p 3000"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "@azure/msal-browser": "^2.38.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  },
+  "keywords": [
+    "debt",
+    "restructuring",
+    "financial",
+    "spa",
+    "azure",
+    "microsoft"
+  ],
+  "author": "DMD Asesores",
+  "license": "MIT"
+}
