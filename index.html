@@ -1,4 +1,43 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -6,1113 +45,12 @@
   <title>Simulador de Reestructuración de Deuda - DMD Asesores</title>
   <meta name="description" content="Calcula y optimiza planes de reestructuración de deuda con DMD Asesores">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  
-  <!-- External libraries -->
+  <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <style>
-    :root {
-      --primary: #0071e3;
-      --primary-hover: #0051a3;
-      --success: #34c759;
-      --danger: #ff3b30;
-      --warning: #ffcc00;
-      --background: #f5f5f7;
-      --surface: #ffffff;
-      --text-primary: #1d1d1f;
-      --text-secondary: #666;
-      --border: #e5e5ea;
-      --shadow: 0 4px 12px rgba(0,0,0,0.1);
-      --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
-      --radius: 12px;
-      --radius-lg: 18px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    * { box-sizing: border-box; }
-    
-    html, body { 
-      margin: 0; 
-      padding: 0; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-      background: var(--background); 
-      color: var(--text-primary);
-      line-height: 1.6;
-    }
-    
-    body { padding: 20px; }
-
-    /* Navigation Tabs */
-    .nav-tabs {
-      display: flex;
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 0.5rem;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow);
-      gap: 0.5rem;
-    }
-
-    .nav-tab {
-      flex: 1;
-      padding: 0.75rem 1.5rem;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .nav-tab:hover {
-      background: rgba(0, 113, 227, 0.05);
-      color: var(--primary);
-    }
-
-    .nav-tab.active {
-      background: var(--primary);
-      color: white;
-    }
-
-    .nav-tab svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    /* Dashboard Styles */
-    .dashboard-container {
-      display: none;
-    }
-
-    .dashboard-container.active {
-      display: block;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .kpi-card {
-      background: var(--surface);
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-
-    .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-hover);
-    }
-
-    .kpi-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .kpi-title {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    .kpi-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.1;
-    }
-
-    .kpi-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .kpi-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-    }
-
-    .kpi-change {
-      font-size: 0.875rem;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .kpi-change.positive {
-      color: var(--success);
-    }
-
-    .kpi-change.negative {
-      color: var(--danger);
-    }
-
-    .chart-container {
-      background: var(--surface);
-      padding: 2rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      margin-bottom: 1.5rem;
-      height: 400px;
-      position: relative;
-    }
-
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .chart-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .chart-filters {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .chart-filter {
-      padding: 0.5rem 1rem;
-      background: var(--background);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .chart-filter:hover {
-      border-color: var(--primary);
-    }
-
-    .chart-filter.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    /* Timeline Styles */
-    .timeline-container {
-      background: var(--surface);
-      padding: 2rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      margin-top: 2rem;
-    }
-
-    .timeline {
-      position: relative;
-      padding: 1rem 0;
-    }
-
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 2rem;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: var(--border);
-    }
-
-    .timeline-item {
-      position: relative;
-      padding-left: 5rem;
-      padding-bottom: 2rem;
-    }
-
-    .timeline-item:last-child {
-      padding-bottom: 0;
-    }
-
-    .timeline-marker {
-      position: absolute;
-      left: 1rem;
-      top: 0;
-      width: 2rem;
-      height: 2rem;
-      background: var(--surface);
-      border: 2px solid var(--primary);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .timeline-marker.success {
-      border-color: var(--success);
-      background: var(--success);
-    }
-
-    .timeline-marker.warning {
-      border-color: var(--warning);
-      background: var(--warning);
-    }
-
-    .timeline-marker.danger {
-      border-color: var(--danger);
-      background: var(--danger);
-    }
-
-    .timeline-marker svg {
-      width: 16px;
-      height: 16px;
-      color: white;
-    }
-
-    .timeline-content {
-      background: var(--background);
-      padding: 1rem;
-      border-radius: var(--radius);
-    }
-
-    .timeline-date {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.25rem;
-    }
-
-    .timeline-title {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .timeline-description {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    /* Estado Badge */
-    .estado-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .estado-badge.plan_creado {
-      background: rgba(0, 113, 227, 0.1);
-      color: var(--primary);
-    }
-
-    .estado-badge.plan_contratado {
-      background: rgba(52, 199, 89, 0.1);
-      color: var(--success);
-    }
-
-    .estado-badge.primer_pago {
-      background: rgba(48, 209, 88, 0.1);
-      color: #30d158;
-    }
-
-    /* Tabla de seguimiento */
-    .seguimiento-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 2rem;
-    }
-
-    .seguimiento-table th {
-      text-align: left;
-      padding: 1rem;
-      background: var(--background);
-      font-weight: 600;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .seguimiento-table td {
-      padding: 1rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .seguimiento-table tr:hover {
-      background: var(--background);
-    }
-
-    .cliente-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .cliente-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-    }
-
-    .cliente-nombre {
-      font-weight: 500;
-    }
-
-    .cliente-ref {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    /* Loading Screen */
-    .loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--background);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      transition: opacity 0.3s ease;
-    }
-
-    .loading-content {
-      text-align: center;
-    }
-
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Status Bar */
-    .status-bar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0.75rem 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 1000;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .status-info {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      font-size: 0.875rem;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0.75rem;
-      background: var(--success);
-      color: white;
-      border-radius: 999px;
-      font-weight: 500;
-    }
-
-    .status-badge.offline {
-      background: var(--danger);
-    }
-
-    .main-wrapper {
-      margin-top: 60px;
-    }
-
-    /* Componentes Base */
-    .contenedor-simulador {
-      max-width: 1200px;
-      margin: 0 auto 40px;
-      background: var(--surface);
-      padding: 40px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-
-    .header-simulador {
-      text-align: center;
-      margin-bottom: 3rem;
-    }
-
-    .logo {
-      max-width: 120px;
-      height: auto;
-      border-radius: var(--radius);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
-    }
-
-    h1, h2, h3 {
-      margin: 0 0 1rem;
-      font-weight: 600;
-    }
-
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 1.5rem; }
-    h3 { font-size: 1.25rem; }
-
-    /* Formulario */
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .campo {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .campo label {
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .campo input,
-    .campo select,
-    .campo textarea {
-      padding: 12px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 16px;
-      transition: var(--transition);
-      background: var(--surface);
-    }
-
-    .campo input:focus,
-    .campo select:focus,
-    .campo textarea:focus {
-      border-color: var(--primary);
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
-    }
-
-    .campo input.error {
-      border-color: var(--danger);
-    }
-
-    .campo .help-text {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    /* Botones */
-    .btn {
-      cursor: pointer;
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: 500;
-      border-radius: var(--radius);
-      border: none;
-      transition: var(--transition);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      text-decoration: none;
-      white-space: nowrap;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s, height 0.6s;
-    }
-
-    .btn:active::before {
-      width: 300px;
-      height: 300px;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-primario {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primario:hover:not(:disabled) {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
-    }
-
-    .btn-secundario {
-      background: transparent;
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
-
-    .btn-secundario:hover:not(:disabled) {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: white;
-    }
-
-    .btn-success:hover:not(:disabled) {
-      background: #2ca548;
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-icon {
-      padding: 8px;
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Tabla */
-    .tabla-deudas {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      margin-bottom: 2rem;
-      background: var(--surface);
-      overflow: hidden;
-    }
-
-    .tabla-deudas h2 {
-      background: var(--primary);
-      color: white;
-      margin: 0;
-      padding: 1rem 1.5rem;
-      font-size: 1.25rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .tabla-scroll {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead {
-      background: #f8f9fa;
-    }
-
-    th {
-      text-align: left;
-      font-weight: 600;
-      padding: 1rem;
-      border-bottom: 2px solid var(--border);
-      color: var(--text-primary);
-      white-space: nowrap;
-    }
-
-    td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-
-    tbody tr {
-      transition: background-color 0.2s;
-    }
-
-    tbody tr:hover {
-      background: #f8f9fa;
-    }
-
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .tabla-deudas input,
-    .tabla-deudas select {
-      width: 100%;
-      min-width: 100px;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .tabla-deudas input[type="number"] {
-      text-align: right;
-    }
-
-    .tabla-deudas input[type="date"] {
-      min-width: 130px;
-    }
-
-    .importe-descuento {
-      font-weight: 600;
-      color: var(--success);
-      text-align: right;
-    }
-
-    /* Resultados */
-    .resultado-simulacion {
-      margin-top: 2rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, #fffbf0 0%, #fff4e0 100%);
-      border-radius: var(--radius-lg);
-      border: 1px solid #ffd93d;
-      display: none;
-      animation: slideUp 0.3s ease;
-    }
-
-    .resultado-simulacion h3 {
-      color: var(--warning);
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .resultado-final {
-      margin-top: 2rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, #f2f8ff 0%, #e8f4fd 100%);
-      border-radius: var(--radius-lg);
-      border: 1px solid #dae7fe;
-      display: none;
-      animation: slideUp 0.3s ease;
-    }
-
-    .resultado-final h3 {
-      color: var(--primary);
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .alerta-rentabilidad {
-      background: var(--danger);
-      color: white;
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin: 1.5rem 0;
-      display: flex;
-      gap: 1rem;
-      align-items: start;
-    }
-
-    .alerta-rentabilidad p {
-      margin: 0.5rem 0 0;
-      font-size: 0.875rem;
-      opacity: 0.9;
-    }
-
-    .resumen-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .resumen-item {
-      background: white;
-      padding: 1rem;
-      border-radius: var(--radius);
-      text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .resumen-item label {
-      display: block;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.25rem;
-    }
-
-    .resumen-item .valor {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .resumen-item.warning .valor {
-      color: var(--warning);
-    }
-
-    .resumen-item.danger .valor {
-      color: var(--danger);
-    }
-
-    .comisiones-desglose {
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin: 1rem 0;
-    }
-
-    .comisiones-desglose h4 {
-      font-size: 1rem;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary);
-    }
-
-    .comisiones-desglose table {
-      width: 100%;
-      font-size: 0.875rem;
-    }
-
-    .comisiones-desglose td {
-      padding: 0.25rem 0;
-    }
-
-    .comisiones-desglose .total {
-      font-weight: 600;
-      border-top: 1px solid var(--border);
-      padding-top: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes modalSlideUp {
-      from {
-        transform: translateY(50px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    /* Modal */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      width: 90%;
-      max-width: 800px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-      animation: modalSlideUp 0.3s ease;
-    }
-
-    .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-body {
-      padding: 1.5rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    /* Lista de planes */
-    .search-box {
-      padding: 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      width: 100%;
-      margin-bottom: 1rem;
-      font-size: 16px;
-    }
-
-    .planes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1rem;
-    }
-
-    .plan-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      transition: var(--transition);
-      cursor: pointer;
-      background: white;
-    }
-
-    .plan-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow);
-      border-color: var(--primary);
-    }
-
-    .plan-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 1rem;
-    }
-
-    .plan-card-title {
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 0.25rem;
-    }
-
-    .plan-card-ref {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .plan-card-date {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    .plan-card-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .plan-stat {
-      text-align: center;
-    }
-
-    .plan-stat-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .plan-stat-label {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    /* Notificaciones */
-    .notificacion {
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      padding: 16px 24px;
-      border-radius: var(--radius);
-      font-weight: 500;
-      color: white;
-      z-index: 9999;
-      animation: slideIn 0.3s ease-out;
-      box-shadow: var(--shadow-hover);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      max-width: 400px;
-    }
-
-    .notificacion.info { background: var(--primary); }
-    .notificacion.success { background: var(--success); }
-    .notificacion.error { background: var(--danger); }
-    .notificacion.warning { background: var(--warning); color: var(--text-primary); }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .contenedor-simulador {
-        padding: 1.5rem;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .planes-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .status-bar {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1rem;
-      }
-
-      .main-wrapper {
-        margin-top: 100px;
-      }
-
-      .notificacion {
-        left: 20px;
-        right: 20px;
-        top: 120px;
-        max-width: none;
-      }
-
-      .nav-tabs {
-        flex-direction: column;
-      }
-
-      .nav-tab {
-        width: 100%;
-      }
-
-      .kpi-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .chart-container {
-        height: 300px;
-      }
-
-      h1 {
-        font-size: 1.75rem;
-      }
-
-      .tabla-scroll {
-        overflow-x: scroll;
-        -webkit-overflow-scrolling: touch;
-      }
-    }
-
-    /* Utilidades */
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    .mt-1 { margin-top: 0.5rem; }
-    .mt-2 { margin-top: 1rem; }
-    .mt-3 { margin-top: 1.5rem; }
-    .mb-1 { margin-bottom: 0.5rem; }
-    .mb-2 { margin-bottom: 1rem; }
-    .mb-3 { margin-bottom: 1.5rem; }
-    .d-none { display: none; }
-    .d-flex { display: flex; }
-    .justify-between { justify-content: space-between; }
-    .justify-center { justify-content: center; }
-    .align-center { align-items: center; }
-    .gap-1 { gap: 0.5rem; }
-    .gap-2 { gap: 1rem; }
-
-    /* Animaciones adicionales */
-    input.error, select.error {
-      animation: shake 0.3s ease-in-out;
-    }
-    
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      75% { transform: translateX(10px); }
-    }
-
-    /* Estilos para sincronización */
-    .spin {
-      animation: spin 2s linear infinite;
-    }
-  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 </head>
 <body>
-  <!-- Loading Screen -->
   <div class="loading-screen" id="loadingScreen">
     <div class="loading-content">
       <div class="loading-spinner"></div>
@@ -1120,7 +58,6 @@
     </div>
   </div>
 
-  <!-- Status Bar -->
   <div class="status-bar">
     <div class="status-info">
       <div class="status-badge" id="statusBadge">
@@ -1133,7 +70,7 @@
       <span id="lastUpdate" style="color: var(--text-secondary); font-size: 0.75rem;"></span>
     </div>
     <div class="d-flex gap-1">
-      <button class="btn btn-secundario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app && app.showInfo ? app.showInfo() : console.log('App not ready')">
+      <button class="btn btn-secundario" id="btnShowInfo">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -1141,7 +78,7 @@
         </svg>
         Info
       </button>
-      <button class="btn btn-primario" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="app && app.syncData ? app.syncData() : console.log('App not ready')">
+      <button class="btn btn-primario" id="btnSyncData">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="23 4 23 10 17 10"></polyline>
           <polyline points="1 20 1 14 7 14"></polyline>
@@ -1153,7 +90,6 @@
   </div>
 
   <div class="main-wrapper">
-    <!-- Navigation Tabs -->
     <div class="nav-tabs">
       <button class="nav-tab active" data-tab="dashboard">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1180,9 +116,7 @@
       </button>
     </div>
 
-    <!-- Dashboard Container -->
     <div id="dashboardContainer" class="dashboard-container active">
-      <!-- KPIs -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-header">
@@ -1194,7 +128,7 @@
             </div>
           </div>
           <div class="kpi-value" id="kpiPlanesCreados">0</div>
-          <div class="kpi-change positive">
+          <div class="kpi-change" id="kpiPlanesCambioContainer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
               <polyline points="17 6 23 6 23 12"></polyline>
@@ -1202,7 +136,6 @@
             <span id="kpiPlanesCambio">+0% este mes</span>
           </div>
         </div>
-
         <div class="kpi-card">
           <div class="kpi-header">
             <div class="kpi-title">Tasa de Conversión</div>
@@ -1213,7 +146,7 @@
             </div>
           </div>
           <div class="kpi-value" id="kpiConversion">0%</div>
-          <div class="kpi-change positive">
+          <div class="kpi-change" id="kpiConversionCambioContainer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
               <polyline points="17 6 23 6 23 12"></polyline>
@@ -1221,7 +154,6 @@
             <span id="kpiConversionCambio">+0% vs mes anterior</span>
           </div>
         </div>
-
         <div class="kpi-card">
           <div class="kpi-header">
             <div class="kpi-title">Ahorro Total Generado</div>
@@ -1233,7 +165,7 @@
             </div>
           </div>
           <div class="kpi-value" id="kpiAhorro">0€</div>
-          <div class="kpi-change positive">
+          <div class="kpi-change" id="kpiAhorroCambioContainer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
               <polyline points="17 6 23 6 23 12"></polyline>
@@ -1241,7 +173,6 @@
             <span id="kpiAhorroCambio">+0% este mes</span>
           </div>
         </div>
-
         <div class="kpi-card">
           <div class="kpi-header">
             <div class="kpi-title">Comisiones Acumuladas</div>
@@ -1253,7 +184,7 @@
             </div>
           </div>
           <div class="kpi-value" id="kpiComisiones">0€</div>
-          <div class="kpi-change positive">
+          <div class="kpi-change" id="kpiComisionesCambioContainer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="23 6 17 12 13 12 8 17 1 17"></polyline>
               <polyline points="17 6 23 6 23 12"></polyline>
@@ -1263,17 +194,16 @@
         </div>
       </div>
 
-      <!-- Charts -->
       <div class="chart-container">
         <div class="chart-header">
           <h3 class="chart-title">Evolución Mensual de Planes</h3>
           <div class="chart-filters">
-            <button class="chart-filter active" onclick="app && app.updateChart ? app.updateChart('evolucion', '6m') : console.log('App not ready')">6 Meses</button>
-            <button class="chart-filter" onclick="app && app.updateChart ? app.updateChart('evolucion', '12m') : console.log('App not ready')">12 Meses</button>
-            <button class="chart-filter" onclick="app && app.updateChart ? app.updateChart('evolucion', 'ytd') : console.log('App not ready')">Año Actual</button>
+            <button class="chart-filter active" data-filter="6m">6 Meses</button>
+            <button class="chart-filter" data-filter="12m">12 Meses</button>
+            <button class="chart-filter" data-filter="ytd">Año Actual</button>
           </div>
         </div>
-        <canvas id="chartEvolucion" width="400" height="200"></canvas>
+        <canvas id="chartEvolucion"></canvas>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -1281,24 +211,20 @@
           <div class="chart-header">
             <h3 class="chart-title">Distribución por Tipo de Deuda</h3>
           </div>
-          <canvas id="chartDistribucion" width="200" height="200"></canvas>
+          <canvas id="chartDistribucion"></canvas>
         </div>
-
         <div class="chart-container">
           <div class="chart-header">
             <h3 class="chart-title">Funnel de Conversión</h3>
           </div>
-          <canvas id="chartFunnel" width="200" height="200"></canvas>
+          <canvas id="chartFunnel"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Simulador Container -->
     <div id="simuladorContainer" class="contenedor-simulador" style="display: none;">
       <div class="header-simulador">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Logo_DMD_Asesores.png/320px-Logo_DMD_Asesores.png" 
-             alt="Logo DMD Asesores" 
-             class="logo">
+        <img src="/logo.png" alt="Logo DMD Asesores" class="logo">
         <h1>Simulador de Reestructuración de Deuda</h1>
         <p style="color: var(--text-secondary); margin-top: -0.5rem;">
           Sistema colaborativo con sincronización en la nube
@@ -1318,7 +244,6 @@
             <input type="text" id="nombreDeudor" required placeholder="Ej: Juan Pérez García">
             <span class="help-text">Nombre completo del deudor</span>
           </div>
-
           <div class="campo">
             <label for="dniDeudor">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1332,7 +257,6 @@
             <input type="text" id="dniDeudor" required placeholder="Ej: 12345678A" pattern="[0-9]{8}[A-Za-z]|[XYZ][0-9]{7}[A-Za-z]">
             <span class="help-text">Documento de identidad</span>
           </div>
-
           <div class="campo">
             <label for="emailDeudor">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1344,7 +268,6 @@
             <input type="email" id="emailDeudor" placeholder="correo@ejemplo.com">
             <span class="help-text">Para enviar el plan por correo</span>
           </div>
-
           <div class="campo">
             <label for="numCuotas">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1363,7 +286,7 @@
         <div class="tabla-deudas">
           <h2>
             <span>Deudas a Incluir</span>
-            <span id="totalDeudasCount" style="font-size: 0.9rem; font-weight: normal;">0 deudas</span>
+            <span id="totalDeudasCount">0 deudas</span>
           </h2>
           <div class="tabla-scroll">
             <table>
@@ -1444,7 +367,6 @@
         </div>
       </form>
 
-      <!-- Vista previa de simulación -->
       <div class="resultado-simulacion" id="resultadoSimulacion" style="display: none;">
         <h3>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
@@ -1465,7 +387,7 @@
           </div>
         </div>
         <div class="d-flex gap-1 mt-2 justify-between">
-          <button type="button" class="btn btn-secundario" onclick="app && app.modificarSimulacion ? app.modificarSimulacion() : console.log('App not ready')">
+          <button type="button" class="btn btn-secundario" id="btnModificarSimulacion">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -1509,7 +431,7 @@
             </svg>
             Ver en GitHub
           </button>
-          <button class="btn btn-primario" onclick="app && app.nuevoCliente ? app.nuevoCliente() : console.log('App not ready')">
+          <button class="btn btn-primario" id="btnNuevoCliente">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1520,11 +442,8 @@
       </div>
     </div>
 
-    <!-- Seguimiento Container -->
     <div id="seguimientoContainer" class="contenedor-simulador" style="display: none;">
       <h2>Seguimiento de Planes</h2>
-      
-      <!-- Filtros -->
       <div class="form-grid mb-3">
         <div class="campo">
           <label>Buscar por cliente o referencia</label>
@@ -1538,3 +457,79 @@
             <option value="plan_contratado">Plan Contratado</option>
             <option value="primer_pago">Primer Pago</option>
           </select>
+        </div>
+        <div class="campo">
+          <label>Período</label>
+          <select id="filtroPeriodo">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="365">Último año</option>
+            <option value="0">Todo</option>
+          </select>
+        </div>
+      </div>
+      <div class="tabla-deudas">
+        <h2>
+          <span>Planes en Seguimiento</span>
+          <span id="totalPlanesSeguimiento">0 planes</span>
+        </h2>
+        <div class="tabla-scroll">
+          <table class="seguimiento-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Fecha Creación</th>
+                <th>Deuda Total</th>
+                <th>Cuota</th>
+                <th>Progreso</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaSeguimiento"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalPlanes" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cargar Plan Guardado</h3>
+        <button type="button" class="btn btn-icon" id="btnCerrarModalPlanes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="buscarPlan" class="search-box" placeholder="Buscar por nombre, DNI o referencia...">
+        <div id="listaPlanes" class="planes-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDetallesPlan" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalles del Plan - <span id="detalleReferencia"></span></h3>
+        <button type="button" class="btn btn-icon" id="btnCerrarModalDetalles">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="detallesPlanContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
