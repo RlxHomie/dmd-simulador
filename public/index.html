@@ -1,26 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- Meta Tags -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simulador de Reestructuración de Deuda – DMD Asesores</title>
-  <meta name="description"
-        content="Calcula y optimiza planes de reestructuración de deuda con DMD Asesores">
+  <meta name="description" content="Calcula y optimiza planes de reestructuración de deuda con DMD Asesores">
+  <meta name="keywords" content="reestructuración de deuda, simulador financiero, DMD Asesores, finanzas, planificación financiera">
+  <meta name="robots" content="index, follow">
 
-  <!-- Favicon (ahora dentro de /public) -->
+  <!-- Favicon -->
   <link rel="icon" href="./favicon.ico" type="image/x-icon">
 
-  <!-- External libraries (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" defer></script>
+  <!-- External Libraries (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer crossorigin="anonymous"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" defer crossorigin="anonymous"></script>
 
-  <!-- App styles (ruta relativa) -->
+  <!-- App Styles -->
   <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
-  <div id="app"></div>
+  <!-- Main App Container -->
+  <div id="app" aria-live="polite"></div>
 
-  <!-- App entry point (ruta relativa) -->
+  <!-- App Scripts -->
+  <!-- Variables de entorno expuestas para el navegador -->
+  <script src="./env.js"></script>
+  <!-- App entry point -->
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>
