@@ -2,8 +2,8 @@
 export const config = {
   // Azure AD Configuration
   auth: {
-    clientId: process.env.AZURE_CLIENT_ID || 'YOUR_CLIENT_ID_HERE',
-    authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || 'YOUR_TENANT_ID_HERE'}`,
+    clientId: process.env.AZURE_CLIENT_ID || 'b5c6f963-3def-4d73-ac74-6bbf6cf37a62',
+    authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || 'a70783e2-cf58-4e38-bfd7-b403c7c833af'}`,
     redirectUri: window.location.origin,
     postLogoutRedirectUri: window.location.origin,
     cacheLocation: 'sessionStorage',
@@ -14,7 +14,7 @@ export const config = {
   graph: {
     baseUrl: 'https://graph.microsoft.com/v1.0',
     scopes: ['user.read', 'files.readwrite', 'sites.readwrite.all'],
-    excelFileId: process.env.EXCEL_FILE_ID || 'YOUR_EXCEL_FILE_ID_HERE',
+    excelFileId: process.env.EXCEL_FILE_ID || '01WYAE7MT4WASPPHSYWVGLEAAYVUZCF2O5',
     sheets: {
       entradas: 'Entradas',
       usuarios: 'Usuarios',
@@ -35,3 +35,4 @@ export const config = {
     debug: process.env.NODE_ENV !== 'production'
   }
 };
+
