@@ -57,7 +57,8 @@ export class ChartCard {
     // Default chart options
     const defaultOptions = {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
       plugins: {
         legend: {
           display: this.config.showLegend !== false,
@@ -310,4 +311,5 @@ export class ChartCard {
       showLegend: false
     });
   }
+
 }
