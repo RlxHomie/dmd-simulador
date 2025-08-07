@@ -422,7 +422,7 @@ body {
 }
 
 .tabla-deudas table {
-  min-width: 1100px;   /* ajusta según tus pruebas */
+  min-width: 1920px;   /* ajusta según tus pruebas */
 }
 .seguimiento-table {
   width: 100%;
