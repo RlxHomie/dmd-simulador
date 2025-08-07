@@ -226,6 +226,13 @@ export class Simulador {
     this.addDebtRow();
   }
   
+  resetView() {
+    const resSim = document.getElementById('resultadoSimulacion');
+    const resOk  = document.getElementById('resultadoFinal');
+    if (resSim) resSim.style.display = 'none';
+    if (resOk)  resOk.style.display  = 'none';
+  }
+  
   attachEventListeners() {
     // Form submission
     const form = document.getElementById('formularioSimulador');
@@ -717,4 +724,5 @@ export class Simulador {
     this.calculateTotals();
     showNotification('Plan cargado correctamente', 'success');
   }
+
 }
