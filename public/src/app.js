@@ -271,6 +271,10 @@ class App {
     // Render component
     this.currentTab = tabName;
     await this.components[tabName].render();
+
+    if (tabName === 'simulador' && this.components.simulador.resetView) {
+      this.components.simulador.resetView();
+    }
     
     // Update app reference in global namespace
     window.DMDAsesores.app = this;
@@ -361,4 +365,5 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Make app globally accessible
   window.app = app;
+
 });
