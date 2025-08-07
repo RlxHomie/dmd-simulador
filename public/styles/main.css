@@ -306,7 +306,8 @@ body {
 
 /* ==================== CONTENEDOR SIMULADOR ==================== */
 .contenedor-simulador {
-  max-width: 1200px;
+  max-width: 1600px;   /* o 100% si prefieres ocupar todo */
+  width: 100%;
   margin: 0 auto;
   padding: var(--spacing-xl);
   background: var(--surface);
@@ -420,7 +421,9 @@ body {
   overflow-x: auto;
 }
 
-.tabla-deudas table,
+.tabla-deudas table {
+  min-width: 1100px;   /* ajusta según tus pruebas */
+}
 .seguimiento-table {
   width: 100%;
   border-collapse: collapse;
