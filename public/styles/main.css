@@ -306,7 +306,7 @@ body {
 
 /* ==================== CONTENEDOR SIMULADOR ==================== */
 .contenedor-simulador {
-  max-width: 2560px;   /* o 100% si prefieres ocupar todo */
+  max-width: none;   /* o 100% si prefieres ocupar todo */
   width: 100%;
   margin: 0 auto;
   padding: var(--spacing-xl);
