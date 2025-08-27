@@ -234,6 +234,22 @@ export async function exportPlanToPDF(planData) {
     // IMPORTANTE: Esperar más tiempo para renderizado completo
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    // Forzar layout estable antes de capturar (evita PDF en blanco)
+pdfDiv.style.display = 'block';
+
+// Forzar reflow
+// eslint-disable-next-line no-unused-expressions
+pdfDiv.offsetHeight;
+
+// Doble requestAnimationFrame para asegurar pintura
+await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+
+// (opcional) si tienes fuentes web, espera un tick extra
+if (document.fonts && document.fonts.ready) {
+  try { await document.fonts.ready; } catch {}
+}
+
+
     const filename = generateFilename(planData);
     
     showNotification('Generando PDF...', 'info');
