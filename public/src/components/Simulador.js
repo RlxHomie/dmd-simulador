@@ -84,7 +84,7 @@ export class Simulador {
               <table>
                 <thead>
                   <tr>
-                    <th>Nº Contrato</th>
+                    <th>N° Contrato</th>
                     <th>Producto</th>
                     <th>Entidad</th>
                     <th>Antigüedad</th>
@@ -188,6 +188,14 @@ export class Simulador {
               Modificar
             </button>
             <div class="d-flex gap-1">
+              <button type="button" class="btn btn-secundario" id="btnDescargarSimulacion">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Descargar PDF
+              </button>
               <button type="button" class="btn btn-success" id="btnConfirmarPlan">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="20 6 9 17 4 12"></polyline>
@@ -203,6 +211,14 @@ export class Simulador {
           <p>El plan ha sido guardado y está listo para ser enviado al cliente.</p>
           <div class="resumen-final" id="resumenFinal"></div>
           <div class="d-flex gap-1 mt-3 justify-center">
+            <button class="btn btn-secundario" id="btnDescargarPDF">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Descargar PDF
+            </button>
             <button class="btn btn-secundario" id="btnEnviarEmail">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
@@ -252,6 +268,10 @@ export class Simulador {
     document.getElementById('btnNuevoCliente').addEventListener('click', () => this.newClient());
     document.getElementById('btnEnviarEmail').addEventListener('click', () => this.sendEmail());
     
+    // ====== NUEVOS EVENT LISTENERS PARA PDF ======
+    document.getElementById('btnDescargarSimulacion')?.addEventListener('click', () => this.descargarPDF());
+    document.getElementById('btnDescargarPDF')?.addEventListener('click', () => this.descargarPDF());
+    
     // Delegated event listener for delete buttons
     document.getElementById('tablaDeudas').addEventListener('click', (e) => {
       if (e.target.closest('.btn-danger')) {
@@ -260,6 +280,124 @@ export class Simulador {
         this.updateDebtCounter();
       }
     });
+  }
+  
+  // ====== NUEVO MÉTODO PARA DESCARGAR PDF ======
+  async descargarPDF() {
+    try {
+      // Verificar si hay un plan para descargar
+      if (!this.currentPlan) {
+        showNotification('No hay un plan para descargar. Primero simula o carga un plan.', 'warning');
+        return;
+      }
+
+      showNotification('Generando PDF profesional...', 'info');
+
+      // Verificar que el módulo PDF esté disponible
+      if (!window.DMD || !window.DMD.exportFromPlanData) {
+        throw new Error('Módulo PDF no disponible. Recarga la página e intenta de nuevo.');
+      }
+
+      // Preparar datos del plan para el PDF
+      const planData = this.preparePlanDataForPDF();
+
+      // Generar PDF con configuración optimizada para producción
+      const result = await window.DMD.exportFromPlanData(planData, {
+        quality: 0.98,
+        scale: 1.4,
+        margins: [8, 8, 8, 8],
+        format: 'a4',
+        orientation: 'portrait'
+      });
+
+      showNotification(`PDF descargado: ${result.filename}`, 'success');
+
+      // Actualizar dashboard si hay callback
+      if (this.onUpdate) {
+        this.onUpdate();
+      }
+
+    } catch (error) {
+      console.error('[PDF Error]', error);
+      showNotification(`Error al generar PDF: ${error.message}`, 'error');
+      
+      // En producción, enviar error a servicio de logging
+      if (window.analytics && window.analytics.track) {
+        window.analytics.track('pdf_generation_error', {
+          error: error.message,
+          planRef: this.currentPlan?.referencia,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  // ====== MÉTODO HELPER PARA PREPARAR DATOS DEL PDF ======
+  preparePlanDataForPDF() {
+    // Validar datos requeridos
+    if (!this.currentPlan.cliente) {
+      throw new Error('Datos del cliente incompletos');
+    }
+
+    // Calcular descuento medio
+    const descuentoMedio = this.calcularDescuentoMedio();
+    
+    // Mapear deudas con validación
+    const deudasMapeadas = (this.currentPlan.deudas || []).map(deuda => ({
+      contrato: deuda.contrato || 'N/A',
+      producto: deuda.producto || 'Sin especificar',
+      entidad: deuda.entidad || 'N/A',
+      importe: parseFloat(deuda.importeOriginal || 0),
+      descuento: parseFloat(deuda.descuento || 0),
+      importeConDescuento: parseFloat(deuda.importeFinal || 0)
+    }));
+
+    return {
+      referencia: this.currentPlan.referencia,
+      cliente: {
+        nombre: this.currentPlan.cliente,
+        dni: this.currentPlan.dni || 'No especificado',
+        email: this.currentPlan.email || 'No especificado'
+      },
+      fecha: this.currentPlan.fecha || new Date().toISOString(),
+      estado: this.getEstadoTexto(this.currentPlan.estado || 'simulado'),
+      totalImporte: parseFloat(this.currentPlan.deudaTotal || 0),
+      totalConDescuento: parseFloat(this.currentPlan.deudaFinal || 0),
+      cuotaMensual: parseFloat(this.currentPlan.cuotaMensual || 0),
+      ahorro: parseFloat(this.currentPlan.ahorro || 0),
+      descuentoMedio: descuentoMedio,
+      numCuotas: parseInt(this.currentPlan.numCuotas || 0),
+      deudas: deudasMapeadas
+    };
+  }
+
+  // ====== MÉTODO HELPER PARA CALCULAR DESCUENTO MEDIO ======
+  calcularDescuentoMedio() {
+    if (!this.currentPlan.deudas || this.currentPlan.deudas.length === 0) {
+      return 0;
+    }
+    
+    const totalDescuento = this.currentPlan.deudas.reduce((sum, deuda) => {
+      return sum + (parseFloat(deuda.descuento) || 0);
+    }, 0);
+    
+    return totalDescuento / this.currentPlan.deudas.length;
+  }
+
+  // ====== MÉTODO HELPER PARA TEXTO DE ESTADO ======
+  getEstadoTexto(estado) {
+    const estados = {
+      'simulado': 'Simulado',
+      'plan_creado': 'Plan Creado',
+      'plan_contratado': 'Contratado',
+      'primer_pago': 'Primer Pago Realizado',
+      'en_negociacion': 'En Negociación',
+      'aprobado': 'Aprobado',
+      'en_pago': 'En Proceso de Pago',
+      'completado': 'Completado',
+      'cancelado': 'Cancelado'
+    };
+    return estados[estado] || estado;
   }
   
   addDebtRow() {
@@ -724,5 +862,4 @@ export class Simulador {
     this.calculateTotals();
     showNotification('Plan cargado correctamente', 'success');
   }
-
 }
