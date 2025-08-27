@@ -207,48 +207,73 @@ export async function exportPlanToPDF(planData) {
 
     const html2pdf = await ensureHtml2PdfLoaded();
 
-    // Crear div con la FÓRMULA que funciona
+    // Crear div VISIBLE temporalmente para que se renderice
     const pdfDiv = document.createElement('div');
     pdfDiv.id = 'pdf-professional-temp';
     pdfDiv.innerHTML = generateProfessionalHTML(planData);
     
-    // ESTILOS EXACTOS que funcionaron
+    // HACER VISIBLE EN PANTALLA temporalmente
     pdfDiv.style.cssText = `
-      position: absolute !important;
+      position: fixed !important;
       top: 0px !important;
       left: 0px !important;
       width: 800px !important;
+      max-height: 90vh !important;
+      overflow: auto !important;
       background: white !important;
       padding: 20px !important;
-      z-index: -1000 !important;
+      z-index: 10000 !important;
       font-family: Arial, sans-serif !important;
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
+      border: 3px solid #0071e3 !important;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8) !important;
     `;
 
-    // Agregar al DOM y forzar reflow
+    // Agregar al DOM
     document.body.appendChild(pdfDiv);
+    
+    // Forzar reflow múltiple
     pdfDiv.offsetHeight;
-
+    pdfDiv.scrollTop;
+    
     console.log('📏 PDF Container visible:', pdfDiv.offsetParent !== null);
+    console.log('📐 Dimensiones:', pdfDiv.offsetWidth, 'x', pdfDiv.offsetHeight);
 
-    // Esperar renderizado
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Esperar MÁS tiempo para renderizado completo + mostrar al usuario
+    showNotification('Preparando contenido (verás una previsualización)...', 'info');
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 segundos
 
     // Configuración optimizada
     const filename = generateFilename(planData);
+    
+    showNotification('Capturando contenido...', 'info');
+    
+    // GENERAR PDF con configuración que sabemos funciona
     await html2pdf()
       .from(pdfDiv)
       .set({
-        margin: [8, 8, 8, 8],
+        margin: [5, 5, 5, 5],
         filename: filename,
-        image: { type: 'jpeg', quality: 0.95 },
+        image: { 
+          type: 'jpeg', 
+          quality: 0.98 
+        },
         html2canvas: { 
-          scale: 1.5,
+          scale: 1.2,
           useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
+          allowTaint: false,
+          logging: true, // Activar logs para debug
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: 1200,
+          windowHeight: 1600,
+          onrendered: function(canvas) {
+            console.log('📷 Canvas generado:', canvas.width, 'x', canvas.height);
+            console.log('📊 Canvas tiene contenido:', canvas.toDataURL().length > 10000);
+          }
         },
         jsPDF: { 
           unit: 'mm', 
@@ -256,18 +281,27 @@ export async function exportPlanToPDF(planData) {
           orientation: 'portrait',
           compress: true
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy'],
+          before: '.page-break'
+        }
       })
       .save();
 
-    // Limpiar
-    pdfDiv.remove();
+    console.log('✅ PDF generado con éxito');
 
-    showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
+    // Remover después de generar
+    setTimeout(() => {
+      if (pdfDiv && pdfDiv.parentNode) {
+        pdfDiv.remove();
+      }
+    }, 1000);
+
+    showNotification(`✅ PDF profesional descargado: ${filename}`, 'success');
     return { success: true, filename };
 
   } catch (error) {
-    console.error('Error exportando PDF:', error);
+    console.error('❌ Error exportando PDF:', error);
     showNotification(`Error: ${error.message}`, 'error');
     throw error;
   }
