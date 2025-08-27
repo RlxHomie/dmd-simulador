@@ -1,302 +1,293 @@
-// pdfExport.js
-// Alineado al proyecto. Entrada principal: pdfExport.generateFromSimulation(sim).
-// Requiere jsPDF v2.x en window.jspdf.jsPDF.
+// utils/pdfExport.js - VERSIÓN CORREGIDA ✅
+import { showNotification } from './notifications.js';
 
-export const pdfExport = (() => {
-  const PAGE = { w: 210, h: 297, lm: 15, rm: 15, tm: 15, bm: 15 };
-  const COLORS = {
-    primary: '#2B6CB0',
-    primaryLight: '#E6EFFA',
-    kpiBlue: '#2F7FEC',
-    kpiBg: '#F5F9FF',
-    grayText: '#444',
-    lightGray: '#8A8A8A',
-    border: '#DADDE2',
-    blueDark: '#0B3A75',
-    greenBar: '#46C36B',
-  };
-  const LOGO_PATH_DEFAULT = 'logo.png';
+let folioCounter = 0;
 
-  // ---------- Utils ----------
-  const toNumber = (v) => {
-    if (v == null || v === '') return 0;
-    if (typeof v === 'number') return v;
-    // soporta "31.507,50" o "31,507.50"
-    const s = String(v).replace(/[^\d,.-]/g, '');
-    const hasComma = s.includes(',');
-    const hasDot = s.includes('.');
-    if (hasComma && hasDot) {
-      // decidir separador decimal por el último símbolo
-      const last = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
-      const dec = s[last];
-      const norm = s
-        .replace(/[.,](?=.*[.,])/g, (m, i) => (i === last ? 'DEC' : ''))
-        .replace(/[.,]/g, '')
-        .replace('DEC', '.');
-      return Number(norm);
+async function ensureHtml2PdfLoaded() {
+  if (typeof html2pdf !== 'undefined') {
+    return html2pdf;
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => resolve(window.html2pdf);
+    script.onerror = () => reject(new Error('No se pudo cargar html2pdf'));
+    document.head.appendChild(script);
+  });
+}
+
+function generateFilename(planData) {
+  const counter = ++folioCounter;
+  const clientName = (planData.cliente || 'Plan').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `${clientName}_${date}_${String(counter).padStart(4, '0')}.pdf`;
+}
+
+function formatCurrency(amount) {
+  if (typeof amount !== 'number' || isNaN(amount)) return '€0.00';
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
+function generateProfessionalHTML(planData) {
+  // Logo SVG inline que siempre funciona
+  const logoSVG = `<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="5" width="190" height="50" fill="#0071e3" rx="8"/>
+    <text x="100" y="38" font-size="24" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">DMD ASESORES</text>
+  </svg>`;
+
+  // Calcular totales
+  let totalOriginal = 0;
+  let totalFinal = 0;
+  let totalDescuentos = 0;
+  let numDeudas = 0;
+
+  const deudasHTML = (planData.deudas || []).map((deuda, index) => {
+    const importe = parseFloat(deuda.importeOriginal || 0);
+    const descuento = parseFloat(deuda.descuento || 0);
+    const importeFinal = parseFloat(deuda.importeFinal || importe * (1 - descuento / 100));
+
+    if (importe > 0) {
+      totalOriginal += importe;
+      totalFinal += importeFinal;
+      totalDescuentos += descuento;
+      numDeudas++;
     }
-    if (hasComma && !hasDot) return Number(s.replace(/\./g, '').replace(',', '.'));
-    return Number(s.replace(/,/g, ''));
-  };
-  const fmtEUR = (n) =>
-    Number(n ?? 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 });
-  const fmtPct = (n) => `${Number(n ?? 0).toFixed(2)}%`;
 
-  function getJsPDF() {
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error('jsPDF no está disponible. Inclúyelo antes de pdfExport.js');
-    }
-    return window.jspdf.jsPDF;
+    return `
+      <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+        <td style="padding: 12px 8px; font-family: Courier, monospace; font-size: 11px; border: 1px solid #dee2e6;">${deuda.contrato || 'N/A'}</td>
+        <td style="padding: 12px 8px; font-size: 12px; border: 1px solid #dee2e6;">${deuda.producto || 'N/A'}</td>
+        <td style="padding: 12px 8px; font-weight: 600; font-size: 12px; border: 1px solid #dee2e6;">${deuda.entidad || 'N/A'}</td>
+        <td style="padding: 12px 8px; text-align: right; font-size: 12px; border: 1px solid #dee2e6;">${formatCurrency(importe)}</td>
+        <td style="padding: 12px 8px; text-align: center; font-weight: bold; color: #dc3545; font-size: 12px; border: 1px solid #dee2e6;">${descuento}%</td>
+        <td style="padding: 12px 8px; text-align: right; font-weight: bold; color: #28a745; font-size: 12px; border: 1px solid #dee2e6;">${formatCurrency(importeFinal)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const descuentoMedio = numDeudas > 0 ? (totalDescuentos / numDeudas) : 0;
+  const cuotaMensual = parseFloat(planData.cuotaMensual || 0);
+  const numCuotas = parseInt(planData.numCuotas || 0);
+  const ahorro = totalOriginal - totalFinal;
+
+  return `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #212529; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px;">
+      
+      <!-- Cabecera Corporativa con SVG -->
+      <div style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white; padding: 30px; text-align: center; margin-bottom: 30px; border-radius: 12px;">
+        <div style="margin-bottom: 15px;">${logoSVG}</div>
+        <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -1px;">Plan de Reestructuración de Deuda</h1>
+        <p style="margin: 15px 0 0; font-size: 18px; opacity: 0.95;">Referencia: ${planData.referencia || 'N/A'}</p>
+      </div>
+
+      <!-- Información del Cliente y Plan -->
+      <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+          <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL CLIENTE</h3>
+          <p style="margin: 10px 0;"><strong>Nombre:</strong> ${planData.cliente || 'N/A'}</p>
+          <p style="margin: 10px 0;"><strong>DNI/NIE:</strong> ${planData.dni || 'N/A'}</p>
+          <p style="margin: 10px 0;"><strong>Email:</strong> <span style="color: #0071e3;">${planData.email || 'No especificado'}</span></p>
+        </div>
+        
+        <div style="flex: 1;">
+          <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL PLAN</h3>
+          <p style="margin: 10px 0;"><strong>Fecha:</strong> ${new Date(planData.fecha || Date.now()).toLocaleDateString('es-ES', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}</p>
+          <p style="margin: 10px 0;"><strong>Estado:</strong> 
+            <span style="background: #e3f2fd; color: #0071e3; padding: 6px 15px; border-radius: 20px; font-size: 13px; font-weight: 500;">
+              ${planData.estado?.replace('_', ' ')?.toUpperCase() || 'SIMULADO'}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Resumen Financiero -->
+      <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 30px; border-radius: 15px; margin: 30px 0; border-left: 6px solid #0071e3;">
+        <h3 style="margin: 0 0 25px 0; color: #0071e3; font-size: 22px; font-weight: 700;">RESUMEN FINANCIERO</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+          <div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(220, 53, 69, 0.1); border-radius: 12px; border: 1px solid rgba(220, 53, 69, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Deuda Total Original</div>
+              <div style="font-size: 28px; font-weight: 800; color: #dc3545;">${formatCurrency(totalOriginal)}</div>
+            </div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(253, 126, 20, 0.1); border-radius: 12px; border: 1px solid rgba(253, 126, 20, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Total a Pagar</div>
+              <div style="font-size: 28px; font-weight: 800; color: #fd7e14;">${formatCurrency(totalFinal)}</div>
+            </div>
+          </div>
+          
+          <div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(0, 113, 227, 0.1); border-radius: 12px; border: 1px solid rgba(0, 113, 227, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Cuota Mensual</div>
+              <div style="font-size: 32px; font-weight: 900; color: #0071e3;">${formatCurrency(cuotaMensual)}</div>
+            </div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(40, 167, 69, 0.1); border-radius: 12px; border: 1px solid rgba(40, 167, 69, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Ahorro Total</div>
+              <div style="font-size: 28px; font-weight: 800; color: #28a745;">${formatCurrency(ahorro)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 25px; padding-top: 25px; border-top: 2px solid #dee2e6;">
+          <span style="color: #666; font-size: 16px; font-weight: 500;">Descuento Promedio: </span>
+          <strong style="color: #0071e3; font-size: 22px; margin: 0 20px;">${descuentoMedio.toFixed(1)}%</strong>
+          <span style="color: #666; font-size: 16px; font-weight: 500;">Plazo: </span>
+          <strong style="color: #0071e3; font-size: 22px;">${numCuotas} meses</strong>
+        </div>
+      </div>
+
+      <!-- Tabla de Deudas -->
+      <div style="margin-top: 30px;">
+        <h3 style="color: #0071e3; margin-bottom: 20px; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 20px;">DETALLE DE DEUDAS</h3>
+        <table style="width: 100%; border-collapse: collapse; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; font-size: 13px;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white;">
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Contrato</th>
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Producto</th>
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Entidad</th>
+              <th style="padding: 15px 10px; text-align: right; font-weight: 700;">Original</th>
+              <th style="padding: 15px 10px; text-align: center; font-weight: 700;">Desc.</th>
+              <th style="padding: 15px 10px; text-align: right; font-weight: 700;">Final</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${deudasHTML}
+          </tbody>
+          <tfoot>
+            <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #0071e3;">
+              <td colspan="3" style="padding: 15px 10px; font-weight: 700; font-size: 14px; text-align: right; border: 1px solid #dee2e6;">TOTALES:</td>
+              <td style="padding: 15px 10px; text-align: right; font-weight: 700; font-size: 14px; color: #dc3545; border: 1px solid #dee2e6;">${formatCurrency(totalOriginal)}</td>
+              <td style="padding: 15px 10px; text-align: center; font-weight: 700; font-size: 14px; border: 1px solid #dee2e6;">${descuentoMedio.toFixed(1)}%</td>
+              <td style="padding: 15px 10px; text-align: right; font-weight: 700; font-size: 14px; color: #28a745; border: 1px solid #dee2e6;">${formatCurrency(totalFinal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Términos y Condiciones -->
+      <div style="margin-top: 40px; padding: 25px; background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 12px;">
+        <h4 style="margin-top: 0; color: #856404; font-size: 18px; font-weight: 700;">⚠️ TÉRMINOS Y CONDICIONES</h4>
+        <ul style="margin: 15px 0; padding-left: 25px; color: #856404; font-size: 14px; line-height: 1.8;">
+          <li style="margin-bottom: 8px;">Este plan está sujeto a la aprobación final de las entidades acreedoras</li>
+          <li style="margin-bottom: 8px;">Las condiciones pueden variar según la respuesta de cada acreedor</li>
+          <li style="margin-bottom: 8px;">El cliente se compromete a mantener al día los pagos acordados</li>
+          <li style="margin-bottom: 8px;">DMD Asesores proporcionará seguimiento y gestión integral del plan</li>
+        </ul>
+      </div>
+
+      <!-- Pie de Página -->
+      <div style="text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; padding-top: 20px; border-top: 2px solid #dee2e6;">
+        <p style="margin: 8px 0;">📄 Documento confidencial - Uso exclusivo del cliente</p>
+        <p style="margin: 8px 0;">🕒 Generado: ${new Date().toLocaleDateString('es-ES', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric'
+        })} a las ${new Date().toLocaleTimeString('es-ES')}</p>
+        <p style="margin: 8px 0; font-weight: 600; color: #0071e3;">🏢 DMD Asesores © ${new Date().getFullYear()}</p>
+      </div>
+
+    </div>
+  `;
+}
+
+export async function exportPlanToPDF(planData) {
+  try {
+    showNotification('Preparando PDF profesional...', 'info');
+
+    const html2pdf = await ensureHtml2PdfLoaded();
+
+    // Crear div VISIBLE temporalmente
+    const pdfDiv = document.createElement('div');
+    pdfDiv.id = 'pdf-professional-temp';
+    pdfDiv.innerHTML = generateProfessionalHTML(planData);
+    
+    // CLAVE: Hacer VISIBLE y en posición normal (no fixed)
+    pdfDiv.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 800px;
+      background: white;
+      padding: 20px;
+      z-index: 10000;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      box-shadow: 0 0 30px rgba(0,0,0,0.3);
+    `;
+
+    // Agregar al DOM
+    document.body.appendChild(pdfDiv);
+    
+    // Scroll al inicio para evitar problemas
+    window.scrollTo(0, 0);
+    
+    // Mostrar mensaje al usuario
+    showNotification('Mostrando vista previa del documento...', 'info');
+    
+    // IMPORTANTE: Esperar más tiempo para renderizado completo
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const filename = generateFilename(planData);
+    
+    showNotification('Generando PDF...', 'info');
+    
+    // Configuración optimizada para html2pdf
+    await html2pdf()
+      .from(pdfDiv)
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: filename,
+        image: { 
+          type: 'jpeg', 
+          quality: 0.95 
+        },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: pdfDiv.scrollWidth,
+          windowHeight: pdfDiv.scrollHeight
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait'
+        },
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy']
+        }
+      })
+      .save();
+
+    // Remover el div después de generar
+    setTimeout(() => {
+      if (pdfDiv && pdfDiv.parentNode) {
+        pdfDiv.remove();
+      }
+    }, 500);
+
+    showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
+    return { success: true, filename };
+
+  } catch (error) {
+    console.error('❌ Error exportando PDF:', error);
+    
+    // Limpiar en caso de error
+    const tempDiv = document.getElementById('pdf-professional-temp');
+    if (tempDiv) tempDiv.remove();
+    
+    showNotification(`Error generando PDF: ${error.message}`, 'error');
+    throw error;
   }
-
-  async function fetchAsDataURL(path) {
-    try {
-      const res = await fetch(path, { cache: 'no-cache' });
-      if (!res.ok) return null;
-      const blob = await res.blob();
-      return await new Promise((resolve) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(fr.result);
-        fr.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
-  }
-
-  // ---------- MAPEO DESDE SIMULADOR ----------
-  // Acepta estructuras comunes: { cliente:{nombre}, folio, fecha, vigenciaDiasHabiles, totales:{deuda,pagar,ahorroMensual,meses}, detalle/deudas:[{acreedor,deuda/pagar/meses}] }
-  function mapFromSimulation(sim = {}) {
-    const nombre =
-      sim?.cliente?.nombre || sim?.clienteNombre || sim?.nombreCliente || sim?.nombre || 'Cliente';
-
-    const numeroFolio = sim?.folio || sim?.numeroFolio || '—';
-    const fecha = sim?.fecha || new Date().toLocaleDateString('es-ES');
-    const vigenciaDiasHabiles = sim?.vigenciaDiasHabiles ?? 3;
-
-    // Totales
-    const deudaTotal =
-      toNumber(sim?.totales?.deuda ?? sim?.totalDeuda ?? sim?.deudaTotal ?? 0);
-    const totalAPagar =
-      toNumber(sim?.totales?.pagar ?? sim?.totalPagar ?? sim?.totalAPagar ?? sim?.pagarias ?? 0);
-    const ahorroMensual =
-      toNumber(sim?.totales?.ahorroMensual ?? sim?.ahorroMensual ?? 0);
-    const meses =
-      toNumber(sim?.totales?.meses ?? sim?.meses ?? sim?.duracionMeses ?? 0);
-
-    const ahorroTotal = deudaTotal - totalAPagar;
-    const descuentoTotalPct = deudaTotal ? (ahorroTotal / deudaTotal) * 100 : 0;
-
-    const detalle = Array.isArray(sim?.detalle) ? sim.detalle
-                   : Array.isArray(sim?.deudas) ? sim.deudas
-                   : Array.isArray(sim?.items) ? sim.items
-                   : [];
-
-    const deudas = detalle.map(d => ({
-      acreedor: d?.acreedor || d?.entidad || d?.banco || '—',
-      debes: toNumber(d?.debes ?? d?.deuda ?? d?.monto ?? 0),
-      pagarias: toNumber(d?.pagarias ?? d?.pagar ?? d?.oferta ?? 0),
-      meses: d?.meses ?? d?.plazo ?? '',
-    }));
-
-    const numeroDeudas = sim?.numeroDeudas ?? deudas.length;
-
-    const asesor = {
-      nombre: sim?.asesor?.nombre || sim?.asesorNombre || sim?.asesor || '—',
-      email: sim?.asesor?.email || sim?.asesorEmail || '—',
-      direccion: sim?.asesor?.direccion || sim?.asesorDireccion || '—',
-    };
-
-    return {
-      header: { nombre, numeroFolio, numeroDeudas, fecha, vigenciaDiasHabiles },
-      resumen: {
-        deudaTotal,
-        pagarias: totalAPagar,
-        ahorroTotal,
-        descuentoTotalPct,
-        ahorroMensual,
-        meses,
-        barras: { debes: deudaTotal, pagarias: totalAPagar },
-      },
-      deudas,
-      asesor,
-    };
-  }
-
-  // ---------- Dibujo ----------
-  async function drawHeader(doc, data, logoPath) {
-    const { nombre, numeroFolio, numeroDeudas, fecha, vigenciaDiasHabiles } = data.header;
-    const dataURL = await fetchAsDataURL(logoPath || LOGO_PATH_DEFAULT);
-    if (dataURL) doc.addImage(dataURL, 'PNG', PAGE.w - PAGE.rm - 48, PAGE.tm - 2, 48, 16);
-
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor('#1B1B1B');
-    doc.text('Nombre:', PAGE.lm, 25);              doc.text('Número de folio:', PAGE.w / 2, 25);
-    doc.text('Número de deudas:', PAGE.lm, 31);    doc.text('Fecha:', PAGE.w / 2, 31);
-    doc.text('Deuda total:', PAGE.lm, 37);         doc.text('Fecha de vigencia:', PAGE.w / 2, 37);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text(String(nombre), PAGE.lm + 20, 25);
-    doc.text(String(numeroFolio), PAGE.w / 2 + 33, 25);
-    doc.text(String(numeroDeudas), PAGE.lm + 30, 31);
-    doc.text(String(fecha), PAGE.w / 2 + 15, 31);
-    doc.text(fmtEUR(data.resumen.deudaTotal), PAGE.lm + 22, 37);
-    doc.text(`${vigenciaDiasHabiles} días hábiles`, PAGE.w / 2 + 33, 37);
-
-    doc.setFontSize(8); doc.setTextColor(COLORS.lightGray);
-    doc.text('Página 1 de 1', PAGE.lm, PAGE.tm - 5);
-  }
-
-  function drawDashedArrow(doc, x1, y1, x2, y2) {
-    doc.setDrawColor('#2D9CDB'); doc.setLineWidth(0.6);
-    doc.setLineDash([1.8], 0); doc.line(x1, y1, x2, y2); doc.setLineDash();
-    const ang = Math.atan2(y2 - y1, x2 - x1), s = 3;
-    doc.line(x2, y2, x2 - s * Math.cos(ang - Math.PI / 6), y2 - s * Math.sin(ang - Math.PI / 6));
-    doc.line(x2, y2, x2 - s * Math.cos(ang + Math.PI / 6), y2 - s * Math.sin(ang + Math.PI / 6));
-  }
-
-  function drawKpiCard(doc, { x, y, w, h, title, value, icon }) {
-    doc.setFillColor(COLORS.kpiBg); doc.setDrawColor(COLORS.border);
-    doc.roundedRect(x, y, w, h, 2, 2, 'FD');
-
-    const iconSize = 10, ix = x + 6, iy = y + 6;
-    doc.setFillColor(COLORS.kpiBlue); doc.roundedRect(ix, iy, iconSize, iconSize, 2, 2, 'F');
-    doc.setTextColor('#FFFFFF'); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    const symbol = icon === 'calendar' ? '📅' : icon === 'camera' ? '📷' : '％';
-    doc.text(symbol, ix + iconSize / 2, iy + iconSize / 2 + 3.1, { align: 'center' });
-
-    doc.setTextColor(COLORS.grayText); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text(String(title), x + 22, y + 12);
-
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor('#1B1B1B');
-    doc.text(String(value), x + 22, y + 22);
-  }
-
-  function drawBarsPanel(doc, { x, y, w, h, resumen }) {
-    doc.setDrawColor(COLORS.border); doc.roundedRect(x, y, w, h, 3, 3, 'D');
-
-    const gx = x + 15, gy = y + 16, gh = h - 30, baseY = gy + gh, barW = 28;
-    const maxV = Math.max(resumen.barras.debes, resumen.barras.pagarias) * 1.1 || 1;
-    const hDebes = (resumen.barras.debes / maxV) * (gh - 10);
-    const hPaga  = (resumen.barras.pagarias / maxV) * (gh - 10);
-
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#1B1B1B');
-    doc.text('Lo que debes', gx + 10, gy - 4); doc.text('Lo que pagarías', gx + 10 + barW + 40, gy - 4);
-
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(COLORS.grayText);
-    doc.text(fmtEUR(resumen.barras.debes), gx + 10, gy + 2);
-    doc.text(fmtEUR(resumen.barras.pagarias), gx + 10 + barW + 40, gy + 2);
-
-    doc.setFillColor(COLORS.blueDark); doc.roundedRect(gx + 10, baseY - hDebes, barW, hDebes, 3, 3, 'F');
-    doc.setFillColor(COLORS.greenBar); doc.roundedRect(gx + 10 + barW + 40, baseY - hPaga, barW, hPaga, 3, 3, 'F');
-
-    drawDashedArrow(doc, gx + 10 + barW, baseY - hDebes - 4, gx + 10 + barW + 40 + barW, baseY - hPaga - 4);
-
-    const bannerH = 12;
-    doc.setFillColor(COLORS.primary);
-    doc.rect(x + 5, y + h - bannerH - 4, w - 10, bannerH, 'F');
-    doc.setTextColor('#FFFFFF'); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.text(`Te ahorrarás  ${fmtEUR(resumen.ahorroTotal)}`, x + w / 2, y + h - 4 - bannerH / 2 + 3.2, { align: 'center' });
-  }
-
-  function drawDebtsTitle(doc, y) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor('#1B6DB0');
-    doc.text('Detalle de deudas', PAGE.lm, y);
-  }
-
-  function drawDebtTable(doc, startY, rows) {
-    const x = PAGE.lm, w = PAGE.w - PAGE.lm - PAGE.rm, rowH = 7;
-
-    doc.setFillColor(COLORS.primaryLight); doc.setDrawColor(COLORS.border);
-    doc.rect(x, startY, w, rowH, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#1B1B1B');
-
-    const headers = ['A quién le debes', 'Lo que debes', 'Lo que pagarías', 'Mes de liquidación'];
-    const widths = [w * 0.40, w * 0.18, w * 0.22, w * 0.20];
-    let cx = x + 2;
-    headers.forEach((h, i) => { doc.text(h, cx, startY + 4.8); cx += widths[i]; });
-
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(COLORS.grayText);
-    let y = startY + rowH;
-    rows.forEach((r, i) => {
-      if (i % 2 === 1) { doc.setFillColor('#FAFBFC'); doc.rect(x, y, w, rowH, 'F'); }
-      let cx2 = x + 2;
-      const cells = [r.acreedor || '—', fmtEUR(r.debes ?? 0), fmtEUR(r.pagarias ?? 0), String(r.meses ?? '')];
-      cells.forEach((c, j) => { doc.text(String(c), cx2, y + 4.8); cx2 += widths[j]; });
-      y += rowH;
-    });
-    return y;
-  }
-
-  function drawNotes(doc, y) {
-    const notes =
-      'Resuelve tu Deuda promueve la cultura de pago, por lo que para poder ser parte del programa el cliente deberá comprobar que tiene atraso en sus pagos.\n\n' +
-      'El presente documento denominado Plan de Liquidación solamente ilustra una alternativa de pago. Los datos presentados en este documento son informativos y muestran un escenario estimado el cual puede cambiar. IVA incluido.\n\n' +
-      '1. Incluye la comisión mensual de Resuelve Tu Deuda por €190,62 EUR durante los 12 primeros meses. Para los siguientes 6 meses por €133,44 EUR otros 6 meses más por €114,37 EUR y, por último, hasta concluir el programa por €30,25 EUR. Dentro de tu primera cuota ya está incluida la inscripción al programa equivalente a un mes de tu ahorro.\n\n' +
-      '2. Incluye nuestra cuota de éxito (18.15% de la reducción obtenida en cada liquidación).';
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(COLORS.grayText); doc.setFontSize(9);
-    const textWidth = PAGE.w - PAGE.lm - PAGE.rm;
-    const lines = doc.splitTextToSize(notes, textWidth);
-    doc.text(lines, PAGE.lm, y);
-    return y + lines.length * 4.2;
-  }
-
-  function drawAdvisor(doc, y, asesor) {
-    doc.setDrawColor(COLORS.border); doc.line(PAGE.lm, y, PAGE.w - PAGE.rm, y);
-    const boxY = y + 6;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#1B1B1B');
-    doc.text('Asesor:', PAGE.lm, boxY); doc.text('E-mail:', PAGE.lm, boxY + 6);
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(COLORS.grayText);
-    doc.text(String(asesor?.nombre ?? '—'), PAGE.lm + 15, boxY);
-    doc.text(String(asesor?.email ?? '—'), PAGE.lm + 15, boxY + 6);
-    doc.text(String(asesor?.direccion ?? '—'), PAGE.w - PAGE.rm, boxY + 6, { align: 'right' });
-  }
-
-  // ---------- API ----------
-  async function generate(plan, opts = {}) {
-    const jsPDF = getJsPDF();
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-    const logoPath = opts.logoPath || LOGO_PATH_DEFAULT;
-
-    await drawHeader(doc, plan, logoPath);
-
-    const sectionY = 50, sectionH = 90;
-    // marco de sección
-    doc.setDrawColor(COLORS.border);
-    doc.roundedRect(PAGE.lm, sectionY, PAGE.w - PAGE.lm - PAGE.rm, sectionH, 3, 3, 'D');
-
-    // panel barras
-    const panelX = PAGE.lm + 5, panelY = sectionY + 8;
-    const panelW = (PAGE.w - PAGE.lm - PAGE.rm) * 0.55, panelH = sectionH - 16;
-    drawBarsPanel(doc, { x: panelX, y: panelY, w: panelW, h: panelH, resumen: plan.resumen });
-
-    // KPIs derecha
-    const kx = panelX + panelW + 7, ky = panelY, kw = (PAGE.w - PAGE.rm - kx - 5), kh = 22;
-    drawKpiCard(doc, { x: kx, y: ky, w: kw, h: kh, title: 'Descuento total', value: fmtPct(plan.resumen.descuentoTotalPct), icon: 'percent' });
-    drawKpiCard(doc, { x: kx, y: ky + kh + 6, w: kw, h: kh, title: 'Ahorro mensual', value: fmtEUR(plan.resumen.ahorroMensual), icon: 'camera' });
-    drawKpiCard(doc, { x: kx, y: ky + 2 * (kh + 6), w: kw, h: kh, title: 'Durante', value: `${plan.resumen.meses} meses`, icon: 'calendar' });
-
-    // Tabla
-    const debtsTitleY = sectionY + sectionH + 8;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor('#1B6DB0');
-    doc.text('Detalle de deudas', PAGE.lm, debtsTitleY);
-    const afterTableY = drawDebtTable(doc, debtsTitleY + 5, plan.deudas) + 5;
-
-    // Notas + asesor
-    const afterNotesY = drawNotes(doc, afterTableY + 2);
-    drawAdvisor(doc, afterNotesY + 6, plan.asesor);
-
-    const filename = opts?.filename || `Plan_de_Liquidacion_${(plan.header.nombre || 'cliente').toString().trim().replace(/\s+/g, '_')}.pdf`;
-    if (opts?.returnBlob) return doc.output('blob');
-    if (opts?.returnDataUri) return doc.output('datauristring');
-    doc.save(filename);
-    return true;
-  }
-
-  // Entrada alineada con el Simulador:
-  async function generateFromSimulation(sim, opts = {}) {
-    const plan = mapFromSimulation(sim);
-    return generate(plan, opts);
-  }
-
-  return { generate, generateFromSimulation };
-})();
+}
