@@ -204,27 +204,29 @@ export async function exportPlanToPDF(planData) {
 
     const h2p = await ensureHtml2PdfLoaded();
 
-    // Usar el contenedor previsto en index.html
+    // 1) Nodo real
     const pdfDiv = document.getElementById('plan-de-liquidacion');
     if (!pdfDiv) throw new Error('No se encontró el contenedor #plan-de-liquidacion');
 
-    // Inyectar el contenido y preparar visibilidad en el DOM real
+    // 2) Contenido + visibilidad en DOM real
     pdfDiv.innerHTML = generateProfessionalHTML(planData);
     pdfDiv.classList.add('pdf-generating');
     const prevZ = pdfDiv.style.zIndex;
     pdfDiv.style.zIndex = '9999';
 
-    // Asegurar pintado antes de capturar
+    // 3) Esperar pintado
     await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
     if (document.fonts?.ready) { try { await document.fonts.ready; } catch {} }
 
-    // Sanity check (debug rápido)
-    const rect = pdfDiv.getBoundingClientRect();
-    if (!rect.height) console.warn('⚠️ #plan-de-liquidacion tiene altura 0 antes de capturar');
+    // 4) Medidas del nodo real (fallbacks por si el layout no sumó altura aún)
+    const w = Math.max(pdfDiv.scrollWidth, pdfDiv.offsetWidth, 800);
+    const h = Math.max(pdfDiv.scrollHeight, pdfDiv.offsetHeight, 1200);
+
+    console.warn('[PDFDBG] REAL size:', { w, h });
 
     const filename = generateFilename(planData);
 
-    // Opciones: set() -> from() -> save()
+    // 5) Opciones: forzar estado en el DOM CLONADO + viewport explícito
     const opts = {
       margin: [10, 10, 10, 10],
       filename,
@@ -235,23 +237,34 @@ export async function exportPlanToPDF(planData) {
         backgroundColor: '#ffffff',
         removeContainer: true,
         scrollX: 0,
-        // 👉 Clave: asegurar estado correcto en el DOM CLONADO
+        scrollY: 0,
+        windowWidth: w,
+        windowHeight: h,
         onclone: (clonedDoc) => {
           const el = clonedDoc.getElementById('plan-de-liquidacion');
           if (el) {
+            // 👇 Esto es lo que evita el 719x0 en el clon
             el.classList.add('pdf-generating');
+            el.style.position = 'absolute';
             el.style.left = '0';
             el.style.top = '0';
             el.style.visibility = 'visible';
             el.style.display = 'block';
             el.style.zIndex = '9999';
+            // y tamaño explícito
+            el.style.width = '800px';      // o '210mm'
+            el.style.minHeight = '1200px'; // o '297mm'
           }
+          // Debug del clon
+          const r = el?.getBoundingClientRect?.() || {};
+          console.warn('[PDFDBG] CLONE size:', r);
         }
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
       pagebreak: { mode: ['css', 'legacy'] }
     };
 
+    // Orden correcto
     await h2p().set(opts).from(pdfDiv).save();
 
     // Limpieza
