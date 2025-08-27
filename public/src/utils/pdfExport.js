@@ -1,4 +1,4 @@
-// utils/pdfExport.js - Módulo ES6 para exportar PDF
+// utils/pdfExport.js - Versión DEBUG
 import { showNotification } from './notifications.js';
 
 let folioCounter = 0;
@@ -6,13 +6,18 @@ let folioCounter = 0;
 // Cargar html2pdf dinámicamente si no está disponible
 async function ensureHtml2PdfLoaded() {
   if (typeof html2pdf !== 'undefined') {
+    console.log('✅ html2pdf ya está disponible');
     return html2pdf;
   }
 
+  console.log('⚠️ Cargando html2pdf dinámicamente...');
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    script.onload = () => resolve(window.html2pdf);
+    script.onload = () => {
+      console.log('✅ html2pdf cargado exitosamente');
+      resolve(window.html2pdf);
+    };
     script.onerror = () => reject(new Error('No se pudo cargar html2pdf'));
     document.head.appendChild(script);
   });
@@ -26,266 +31,140 @@ function generateFilename(planData) {
   return `${clientName}_${date}_${String(counter).padStart(4, '0')}.pdf`;
 }
 
-// Formatear moneda
-function formatCurrency(amount) {
-  if (typeof amount !== 'number' || isNaN(amount)) return '€0.00';
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-}
-
-// Generar HTML del plan
-function generatePlanHTML(planData) {
-  // Calcular totales desde las deudas
-  let totalOriginal = 0;
-  let totalFinal = 0;
-  let totalDescuentos = 0;
-  let numDeudas = 0;
-
-  const deudasHTML = (planData.deudas || []).map((deuda, index) => {
-    const importe = parseFloat(deuda.importeOriginal || 0);
-    const descuento = parseFloat(deuda.descuento || 0);
-    const importeFinal = parseFloat(deuda.importeFinal || importe * (1 - descuento / 100));
-
-    if (importe > 0) {
-      totalOriginal += importe;
-      totalFinal += importeFinal;
-      totalDescuentos += descuento;
-      numDeudas++;
-    }
-
-    return `
-      <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-family: monospace; font-size: 11px;">
-          ${deuda.contrato || 'N/A'}
-        </td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${deuda.producto || 'N/A'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: 500;">${deuda.entidad || 'N/A'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(importe)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 600; color: #dc3545;">
-          ${descuento}%
-        </td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 600; color: #28a745;">
-          ${formatCurrency(importeFinal)}
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  const descuentoMedio = numDeudas > 0 ? (totalDescuentos / numDeudas) : 0;
-  const cuotaMensual = parseFloat(planData.cuotaMensual || 0);
-  const numCuotas = parseInt(planData.numCuotas || 0);
-
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.5; max-width: 100%;">
-      <!-- Cabecera corporativa -->
-      <div style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white; padding: 25px; text-align: center; margin-bottom: 25px; border-radius: 12px; print-color-adjust: exact;">
-        <h1 style="margin: 0; font-size: 28px; font-weight: 700;">DMD ASESORES</h1>
-        <h2 style="margin: 10px 0 0 0; font-size: 18px; font-weight: 400; opacity: 0.9;">Plan de Reestructuración de Deuda</h2>
-      </div>
-
-      <!-- Información del cliente -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
-        <div>
-          <h3 style="color: #0071e3; margin-bottom: 15px; border-bottom: 2px solid #e3f2fd; padding-bottom: 8px;">DATOS DEL CLIENTE</h3>
-          <table style="width: 100%; font-size: 14px;">
-            <tr><td style="padding: 4px 0; width: 80px; font-weight: 600;">Nombre:</td><td>${planData.cliente || 'N/A'}</td></tr>
-            <tr><td style="padding: 4px 0; font-weight: 600;">DNI/NIE:</td><td>${planData.dni || 'N/A'}</td></tr>
-            <tr><td style="padding: 4px 0; font-weight: 600;">Email:</td><td>${planData.email || 'No especificado'}</td></tr>
-          </table>
-        </div>
-        <div>
-          <h3 style="color: #0071e3; margin-bottom: 15px; border-bottom: 2px solid #e3f2fd; padding-bottom: 8px;">DATOS DEL PLAN</h3>
-          <table style="width: 100%; font-size: 14px;">
-            <tr><td style="padding: 4px 0; width: 80px; font-weight: 600;">Referencia:</td><td style="font-family: monospace;">${planData.referencia || 'N/A'}</td></tr>
-            <tr><td style="padding: 4px 0; font-weight: 600;">Fecha:</td><td>${new Date(planData.fecha || Date.now()).toLocaleDateString('es-ES')}</td></tr>
-            <tr><td style="padding: 4px 0; font-weight: 600;">Estado:</td><td>
-              <span style="background: #e3f2fd; color: #0071e3; padding: 4px 12px; border-radius: 12px; font-size: 12px;">
-                ${planData.estado || 'Simulado'}
-              </span>
-            </td></tr>
-          </table>
-        </div>
-      </div>
-
-      <!-- Resumen financiero -->
-      <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 5px solid #0071e3;">
-        <h3 style="margin: 0 0 20px 0; color: #0071e3; font-size: 20px;">RESUMEN FINANCIERO</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div>
-            <div style="margin-bottom: 15px;">
-              <div style="color: #666; font-size: 13px; margin-bottom: 4px;">Deuda Total Original</div>
-              <div style="font-size: 20px; font-weight: 700; color: #dc3545;">${formatCurrency(totalOriginal)}</div>
-            </div>
-            <div style="margin-bottom: 15px;">
-              <div style="color: #666; font-size: 13px; margin-bottom: 4px;">Total a Pagar</div>
-              <div style="font-size: 20px; font-weight: 700; color: #fd7e14;">${formatCurrency(totalFinal)}</div>
-            </div>
-          </div>
-          <div>
-            <div style="margin-bottom: 15px;">
-              <div style="color: #666; font-size: 13px; margin-bottom: 4px;">Cuota Mensual</div>
-              <div style="font-size: 24px; font-weight: 800; color: #0071e3;">${formatCurrency(cuotaMensual)}</div>
-            </div>
-            <div style="margin-bottom: 15px;">
-              <div style="color: #666; font-size: 13px; margin-bottom: 4px;">Ahorro Total</div>
-              <div style="font-size: 20px; font-weight: 700; color: #28a745;">${formatCurrency(totalOriginal - totalFinal)}</div>
-            </div>
-          </div>
-        </div>
-        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
-          <span style="color: #666;">Descuento Promedio: </span>
-          <strong style="color: #0071e3; font-size: 18px;">${descuentoMedio.toFixed(1)}%</strong>
-          <span style="margin-left: 25px; color: #666;">Plazo: </span>
-          <strong style="color: #0071e3;">${numCuotas} meses</strong>
-        </div>
-      </div>
-
-      <div class="html2pdf__page-break"></div>
-
-      <!-- Tabla de deudas -->
-      <div style="margin-top: 25px;">
-        <h3 style="color: #0071e3; margin-bottom: 15px; border-bottom: 2px solid #e3f2fd; padding-bottom: 8px;">DETALLE DE DEUDAS</h3>
-        <table style="width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 12px;">
-          <thead>
-            <tr style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white;">
-              <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Contrato</th>
-              <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Producto</th>
-              <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Entidad</th>
-              <th style="padding: 12px 10px; text-align: right; font-weight: 600;">Original</th>
-              <th style="padding: 12px 10px; text-align: center; font-weight: 600;">Desc.</th>
-              <th style="padding: 12px 10px; text-align: right; font-weight: 600;">Final</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${deudasHTML}
-          </tbody>
-          <tfoot>
-            <tr style="background: #f8f9fa; border-top: 2px solid #0071e3;">
-              <td colspan="3" style="padding: 12px 10px; font-weight: 700; text-align: right;">TOTALES:</td>
-              <td style="padding: 12px 10px; text-align: right; font-weight: 700; color: #dc3545;">${formatCurrency(totalOriginal)}</td>
-              <td style="padding: 12px 10px; text-align: center; font-weight: 700;">${descuentoMedio.toFixed(1)}%</td>
-              <td style="padding: 12px 10px; text-align: right; font-weight: 700; color: #28a745;">${formatCurrency(totalFinal)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <!-- Términos -->
-      <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
-        <h4 style="margin-top: 0; color: #856404;">⚠️ TÉRMINOS Y CONDICIONES</h4>
-        <ul style="margin: 10px 0; padding-left: 20px; color: #856404; font-size: 13px; line-height: 1.5;">
-          <li>Este plan está sujeto a la aprobación de las entidades acreedoras</li>
-          <li>El cliente debe mantener al día el pago de las cuotas acordadas</li>
-          <li>DMD Asesores realizará el seguimiento y gestión del plan</li>
-        </ul>
-      </div>
-
-      <!-- Pie -->
-      <div style="text-align: center; font-size: 11px; color: #666; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd;">
-        <p style="margin: 5px 0;">📄 Documento confidencial - Uso exclusivo del cliente</p>
-        <p style="margin: 5px 0;">🕒 Generado: ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}</p>
-        <p style="margin: 5px 0;">🏢 DMD Asesores - Especialistas en reestructuración de deuda</p>
-      </div>
-    </div>
-  `;
-}
-
-// Función principal para exportar PDF
+// Función principal para exportar PDF - VERSION DEBUG
 export async function exportPlanToPDF(planData) {
+  console.log('🔍 DEBUG: Iniciando exportPlanToPDF');
+  console.log('📊 Datos del plan recibidos:', planData);
+  
   try {
-    showNotification('Generando PDF profesional...', 'info');
+    showNotification('Generando PDF (modo debug)...', 'info');
 
     // Validar datos
     if (!planData) {
       throw new Error('No hay datos del plan para exportar');
     }
 
+    console.log('✅ Datos validados correctamente');
+
     // Cargar librería si es necesario
     const html2pdf = await ensureHtml2PdfLoaded();
+    console.log('✅ html2pdf disponible:', typeof html2pdf);
 
-    // Crear contenedor temporal visible
-    let container = document.getElementById('plan-de-liquidacion');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'plan-de-liquidacion';
-      document.body.appendChild(container);
+    // CREAR CONTENIDO HTML SIMPLE PARA PRUEBA
+    const testHTML = `
+      <div style="padding: 20px; font-family: Arial;">
+        <h1 style="color: red;">TEST PDF - DMD ASESORES</h1>
+        <h2>Cliente: ${planData.cliente || 'Sin nombre'}</h2>
+        <h3>Referencia: ${planData.referencia || 'Sin referencia'}</h3>
+        
+        <div style="background: yellow; padding: 10px; margin: 20px 0;">
+          <p><strong>Deuda Total:</strong> €${planData.deudaTotal || 0}</p>
+          <p><strong>Cuota Mensual:</strong> €${planData.cuotaMensual || 0}</p>
+          <p><strong>Número de Deudas:</strong> ${(planData.deudas || []).length}</p>
+        </div>
+
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <th style="padding: 10px; background: blue; color: white;">Campo</th>
+            <th style="padding: 10px; background: blue; color: white;">Valor</th>
+          </tr>
+          <tr>
+            <td style="padding: 8px;">Cliente</td>
+            <td style="padding: 8px;">${planData.cliente || 'N/A'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px;">DNI</td>
+            <td style="padding: 8px;">${planData.dni || 'N/A'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px;">Email</td>
+            <td style="padding: 8px;">${planData.email || 'N/A'}</td>
+          </tr>
+        </table>
+
+        <p style="margin-top: 20px; font-size: 20px; font-weight: bold; color: green;">
+          Si ves esto, el PDF está funcionando! 🎉
+        </p>
+      </div>
+    `;
+
+    console.log('📄 HTML generado:', testHTML);
+
+    // Crear contenedor temporal VISIBLE
+    let container = document.getElementById('plan-de-liquidacion-debug');
+    if (container) {
+      container.remove();
     }
-
-    // Generar contenido HTML
-    container.innerHTML = generatePlanHTML(planData);
-
-    // CRUCIAL: Hacer visible el contenedor temporalmente
-    const originalStyles = {
-      position: container.style.position,
-      left: container.style.left,
-      top: container.style.top,
-      visibility: container.style.visibility,
-      display: container.style.display
-    };
-
-    // Hacer visible para html2canvas
-    container.style.position = 'absolute';
-    container.style.left = '0';
-    container.style.top = '0';
-    container.style.visibility = 'visible';
-    container.style.display = 'block';
-    container.style.width = '210mm';
+    
+    container = document.createElement('div');
+    container.id = 'plan-de-liquidacion-debug';
+    container.innerHTML = testHTML;
+    
+    // HACER COMPLETAMENTE VISIBLE
+    container.style.position = 'fixed';
+    container.style.top = '50px';
+    container.style.left = '50px';
+    container.style.width = '700px';
     container.style.backgroundColor = 'white';
+    container.style.border = '2px solid red';
     container.style.padding = '20px';
+    container.style.zIndex = '9999';
     container.style.fontFamily = 'Arial, sans-serif';
-    container.style.zIndex = '-1000'; // Detrás de todo pero visible
+    
+    document.body.appendChild(container);
+    console.log('✅ Contenedor creado y agregado al DOM');
+    console.log('📐 Dimensiones del contenedor:', {
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+      visible: container.offsetParent !== null
+    });
 
-    // Esperar un frame para que se renderice
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    // Esperar 1 segundo para que se renderice
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Configuración del PDF
+    // Configuración del PDF MUY SIMPLE
     const filename = generateFilename(planData);
     const options = {
-      margin: [8, 8, 8, 8],
+      margin: 10,
       filename: filename,
-      image: { type: 'jpeg', quality: 0.95 },
+      image: { type: 'jpeg', quality: 0.9 },
       html2canvas: {
-        scale: 1.5,
+        scale: 1,
         useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 800,
-        windowHeight: 1200,
-        logging: false
+        logging: true,
+        backgroundColor: '#ffffff'
       },
       jsPDF: {
         unit: 'mm',
         format: 'a4',
-        orientation: 'portrait',
-        compress: true
-      },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        orientation: 'portrait'
+      }
     };
+
+    console.log('⚙️ Opciones PDF:', options);
+    console.log('🎯 Iniciando generación PDF...');
 
     // Generar PDF
     await html2pdf().from(container).set(options).save();
 
-    // Restaurar estilos originales
-    container.style.position = originalStyles.position || 'absolute';
-    container.style.left = originalStyles.left || '-9999px';
-    container.style.top = originalStyles.top || '-9999px';
-    container.style.visibility = originalStyles.visibility || 'hidden';
-    container.style.display = originalStyles.display || 'none';
-    container.style.zIndex = '';
+    console.log('✅ PDF generado exitosamente!');
 
-    showNotification(`PDF descargado: ${filename}`, 'success');
+    // Limpiar - remover contenedor después de 3 segundos
+    setTimeout(() => {
+      if (container && container.parentNode) {
+        container.remove();
+        console.log('🧹 Contenedor de debug removido');
+      }
+    }, 3000);
+
+    showNotification(`PDF generado: ${filename}`, 'success');
     
     return { success: true, filename };
 
   } catch (error) {
-    console.error('Error exportando PDF:', error);
-    showNotification(`Error al generar PDF: ${error.message}`, 'error');
+    console.error('❌ ERROR en exportPlanToPDF:', error);
+    console.error('Stack trace:', error.stack);
+    showNotification(`Error: ${error.message}`, 'error');
     throw error;
   }
 }
