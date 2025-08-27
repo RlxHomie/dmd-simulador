@@ -201,32 +201,44 @@ function generateProfessionalHTML(planData) {
 export async function exportPlanToPDF(planData) {
   try {
     showNotification('Generando PDF profesional...', 'info');
-
     const h2p = await ensureHtml2PdfLoaded();
 
-    // 1) Nodo real
-    const pdfDiv = document.getElementById('plan-de-liquidacion');
-    if (!pdfDiv) throw new Error('No se encontró el contenedor #plan-de-liquidacion');
+    // 1) Nodo preferido (si existe en tu HTML)
+    let host = document.getElementById('plan-de-liquidacion');
+    const createdHost = !host;
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'plan-de-liquidacion';
+      document.body.appendChild(host);
+    }
 
-    // 2) Contenido + visibilidad en DOM real
-    pdfDiv.innerHTML = generateProfessionalHTML(planData);
-    pdfDiv.classList.add('pdf-generating');
-    const prevZ = pdfDiv.style.zIndex;
-    pdfDiv.style.zIndex = '9999';
+    // 2) Contenido + visibilidad en DOM real (no dependemos de CSS externo)
+    host.innerHTML = generateProfessionalHTML(planData);
+    host.classList.add('pdf-generating');
+    Object.assign(host.style, {
+      position: 'absolute',
+      left: '0',
+      top: '0',
+      visibility: 'visible',
+      display: 'block',
+      background: '#fff',
+      width: '800px',        // A4 ~ 794px a 96dpi
+      minHeight: '1200px',   // A4 ~ 1123px; dejamos holgura
+      zIndex: '9999'
+    });
 
     // 3) Esperar pintado
     await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
     if (document.fonts?.ready) { try { await document.fonts.ready; } catch {} }
 
-    // 4) Medidas del nodo real (fallbacks por si el layout no sumó altura aún)
-    const w = Math.max(pdfDiv.scrollWidth, pdfDiv.offsetWidth, 800);
-    const h = Math.max(pdfDiv.scrollHeight, pdfDiv.offsetHeight, 1200);
-
-    console.warn('[PDFDBG] REAL size:', { w, h });
+    // 4) Medidas del nodo real
+    const w = Math.max(host.scrollWidth, host.offsetWidth, 800);
+    const h = Math.max(host.scrollHeight, host.offsetHeight, 1200);
+    console.warn(`[PDFDBG] REAL w=${w} h=${h}`);
 
     const filename = generateFilename(planData);
 
-    // 5) Opciones: forzar estado en el DOM CLONADO + viewport explícito
+    // 5) Opciones html2pdf: forzamos tamaño/visibilidad en el CLON
     const opts = {
       margin: [10, 10, 10, 10],
       filename,
@@ -243,42 +255,88 @@ export async function exportPlanToPDF(planData) {
         onclone: (clonedDoc) => {
           const el = clonedDoc.getElementById('plan-de-liquidacion');
           if (el) {
-            // 👇 Esto es lo que evita el 719x0 en el clon
+            // 👇 crítico: el clon a veces hereda el estado "oculto"; lo forzamos visible y con tamaño
             el.classList.add('pdf-generating');
             el.style.position = 'absolute';
             el.style.left = '0';
             el.style.top = '0';
             el.style.visibility = 'visible';
             el.style.display = 'block';
+            el.style.background = '#fff';
+            el.style.width = '800px';
+            el.style.minHeight = '1200px';
             el.style.zIndex = '9999';
-            // y tamaño explícito
-            el.style.width = '800px';      // o '210mm'
-            el.style.minHeight = '1200px'; // o '297mm'
+            const r = el.getBoundingClientRect();
+            console.warn(`[PDFDBG] CLONE w=${r.width} h=${r.height}`);
           }
-          // Debug del clon
-          const r = el?.getBoundingClientRect?.() || {};
-          console.warn('[PDFDBG] CLONE size:', r);
         }
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
       pagebreak: { mode: ['css', 'legacy'] }
     };
 
-    // Orden correcto
-    await h2p().set(opts).from(pdfDiv).save();
+    // 6) Primer intento con el host habitual
+    await h2p().set(opts).from(host).save();
 
-    // Limpieza
-    pdfDiv.classList.remove('pdf-generating');
-    pdfDiv.style.zIndex = prevZ || '';
-    pdfDiv.innerHTML = '';
+    // 7) Limpieza
+    host.classList.remove('pdf-generating');
+    host.innerHTML = '';
+    if (createdHost) host.remove();
 
     showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
     return { success: true, filename };
   } catch (error) {
     console.error('❌ Error exportando PDF:', error);
-    showNotification(`Error generando PDF: ${error.message}`, 'error');
-    const c = document.getElementById('plan-de-liquidacion');
-    if (c) { c.classList.remove('pdf-generating'); c.innerHTML = ''; }
-    throw error;
+
+    // --- FALLBACK DURO: contenedor temporal propio si algo fue mal ---
+    try {
+      const temp = document.createElement('div');
+      temp.id = 'pdf-export-temp';
+      Object.assign(temp.style, {
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        visibility: 'visible',
+        display: 'block',
+        background: '#fff',
+        width: '800px',
+        minHeight: '1200px',
+        zIndex: '9999',
+        padding: '0',
+        margin: '0'
+      });
+      temp.innerHTML = generateProfessionalHTML(planData);
+      document.body.appendChild(temp);
+
+      await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const w2 = Math.max(temp.scrollWidth, temp.offsetWidth, 800);
+      const h2 = Math.max(temp.scrollHeight, temp.offsetHeight, 1200);
+      console.warn(`[PDFDBG] FALLBACK REAL w=${w2} h=${h2}`);
+
+      const h2p = await ensureHtml2PdfLoaded();
+      await h2p().set({
+        margin: [10,10,10,10],
+        filename: generateFilename(planData),
+        image: { type:'jpeg', quality: 0.95 },
+        html2canvas: {
+          scale: 2, useCORS: true, backgroundColor:'#fff',
+          removeContainer:true, scrollX:0, scrollY:0, windowWidth:w2, windowHeight:h2,
+          onclone: (cd)=>{ const e=cd.getElementById('pdf-export-temp');
+            if(e){ e.style.position='absolute'; e.style.left='0'; e.style.top='0';
+              e.style.visibility='visible'; e.style.display='block'; e.style.width='800px'; e.style.minHeight='1200px'; } }
+        },
+        jsPDF: { unit:'mm', format:'a4', orientation:'portrait', compress:true }
+      }).from(temp).save();
+
+      temp.remove();
+      showNotification('✅ PDF generado con fallback', 'success');
+      return { success: true, filename: 'fallback.pdf' };
+    } catch (err2) {
+      // limpiar y propagar
+      const host = document.getElementById('plan-de-liquidacion');
+      if (host) { host.classList.remove('pdf-generating'); host.innerHTML=''; }
+      showNotification(`Error generando PDF: ${error.message}`, 'error');
+      throw error;
+    }
   }
 }
