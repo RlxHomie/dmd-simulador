@@ -1,9 +1,8 @@
-// utils/pdfExport.js - TEST DIRECTO SIN TRUCOS
+// utils/pdfExport.js - VERSIÓN FINAL PROFESIONAL ✅
 import { showNotification } from './notifications.js';
 
 let folioCounter = 0;
 
-// Cargar html2pdf
 async function ensureHtml2PdfLoaded() {
   if (typeof html2pdf !== 'undefined') {
     return html2pdf;
@@ -28,111 +27,248 @@ function formatCurrency(amount) {
   if (typeof amount !== 'number' || isNaN(amount)) return '€0.00';
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
-    currency: 'EUR'
+    currency: 'EUR',
+    minimumFractionDigits: 2
   }).format(amount);
 }
 
-// Función SÚPER SIMPLE que sabemos funciona
+function generateProfessionalHTML(planData) {
+  // Calcular totales
+  let totalOriginal = 0;
+  let totalFinal = 0;
+  let totalDescuentos = 0;
+  let numDeudas = 0;
+
+  const deudasHTML = (planData.deudas || []).map((deuda, index) => {
+    const importe = parseFloat(deuda.importeOriginal || 0);
+    const descuento = parseFloat(deuda.descuento || 0);
+    const importeFinal = parseFloat(deuda.importeFinal || importe * (1 - descuento / 100));
+
+    if (importe > 0) {
+      totalOriginal += importe;
+      totalFinal += importeFinal;
+      totalDescuentos += descuento;
+      numDeudas++;
+    }
+
+    return `
+      <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+        <td style="padding: 12px 8px; font-family: Courier, monospace; font-size: 11px; border: 1px solid #dee2e6;">${deuda.contrato || 'N/A'}</td>
+        <td style="padding: 12px 8px; font-size: 12px; border: 1px solid #dee2e6;">${deuda.producto || 'N/A'}</td>
+        <td style="padding: 12px 8px; font-weight: 600; font-size: 12px; border: 1px solid #dee2e6;">${deuda.entidad || 'N/A'}</td>
+        <td style="padding: 12px 8px; text-align: right; font-size: 12px; border: 1px solid #dee2e6;">${formatCurrency(importe)}</td>
+        <td style="padding: 12px 8px; text-align: center; font-weight: bold; color: #dc3545; font-size: 12px; border: 1px solid #dee2e6;">${descuento}%</td>
+        <td style="padding: 12px 8px; text-align: right; font-weight: bold; color: #28a745; font-size: 12px; border: 1px solid #dee2e6;">${formatCurrency(importeFinal)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const descuentoMedio = numDeudas > 0 ? (totalDescuentos / numDeudas) : 0;
+  const cuotaMensual = parseFloat(planData.cuotaMensual || 0);
+  const numCuotas = parseInt(planData.numCuotas || 0);
+  const ahorro = totalOriginal - totalFinal;
+
+  return `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #212529; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 0;">
+      
+      <!-- Cabecera Corporativa -->
+      <div style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white; padding: 30px; text-align: center; margin-bottom: 30px; border-radius: 12px;">
+        <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -1px;">DMD ASESORES</h1>
+        <h2 style="margin: 15px 0 0 0; font-size: 20px; font-weight: 400; opacity: 0.95;">Plan de Reestructuración de Deuda</h2>
+      </div>
+
+      <!-- Información del Cliente y Plan -->
+      <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+          <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL CLIENTE</h3>
+          <div style="space-y: 8px;">
+            <p style="margin: 10px 0;"><strong>Nombre:</strong> ${planData.cliente || 'N/A'}</p>
+            <p style="margin: 10px 0;"><strong>DNI/NIE:</strong> ${planData.dni || 'N/A'}</p>
+            <p style="margin: 10px 0;"><strong>Email:</strong> <span style="color: #0071e3;">${planData.email || 'No especificado'}</span></p>
+          </div>
+        </div>
+        
+        <div style="flex: 1;">
+          <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL PLAN</h3>
+          <div style="space-y: 8px;">
+            <p style="margin: 10px 0;"><strong>Referencia:</strong> <code style="background: #f8f9fa; padding: 4px 8px; border-radius: 4px; font-family: Courier, monospace;">${planData.referencia || 'N/A'}</code></p>
+            <p style="margin: 10px 0;"><strong>Fecha:</strong> ${new Date(planData.fecha || Date.now()).toLocaleDateString('es-ES', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}</p>
+            <p style="margin: 10px 0;"><strong>Estado:</strong> 
+              <span style="background: #e3f2fd; color: #0071e3; padding: 6px 15px; border-radius: 20px; font-size: 13px; font-weight: 500;">
+                ${planData.estado?.replace('_', ' ')?.toUpperCase() || 'SIMULADO'}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen Financiero -->
+      <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 30px; border-radius: 15px; margin: 30px 0; border-left: 6px solid #0071e3;">
+        <h3 style="margin: 0 0 25px 0; color: #0071e3; font-size: 22px; font-weight: 700;">RESUMEN FINANCIERO</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+          <div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(220, 53, 69, 0.1); border-radius: 12px; border: 1px solid rgba(220, 53, 69, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Deuda Total Original</div>
+              <div style="font-size: 28px; font-weight: 800; color: #dc3545;">${formatCurrency(totalOriginal)}</div>
+            </div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(253, 126, 20, 0.1); border-radius: 12px; border: 1px solid rgba(253, 126, 20, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Total a Pagar</div>
+              <div style="font-size: 28px; font-weight: 800; color: #fd7e14;">${formatCurrency(totalFinal)}</div>
+            </div>
+          </div>
+          
+          <div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(0, 113, 227, 0.1); border-radius: 12px; border: 1px solid rgba(0, 113, 227, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Cuota Mensual</div>
+              <div style="font-size: 32px; font-weight: 900; color: #0071e3;">${formatCurrency(cuotaMensual)}</div>
+            </div>
+            <div style="margin-bottom: 20px; padding: 20px; background: rgba(40, 167, 69, 0.1); border-radius: 12px; border: 1px solid rgba(40, 167, 69, 0.2);">
+              <div style="color: #666; font-size: 14px; margin-bottom: 8px; font-weight: 500;">Ahorro Total</div>
+              <div style="font-size: 28px; font-weight: 800; color: #28a745;">${formatCurrency(ahorro)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 25px; padding-top: 25px; border-top: 2px solid #dee2e6;">
+          <span style="color: #666; font-size: 16px; font-weight: 500;">Descuento Promedio: </span>
+          <strong style="color: #0071e3; font-size: 22px; margin: 0 20px;">${descuentoMedio.toFixed(1)}%</strong>
+          <span style="color: #666; font-size: 16px; font-weight: 500;">Plazo: </span>
+          <strong style="color: #0071e3; font-size: 22px;">${numCuotas} meses</strong>
+        </div>
+      </div>
+
+      <!-- Salto de Página -->
+      <div style="page-break-before: always; margin: 40px 0;"></div>
+
+      <!-- Tabla de Deudas -->
+      <div style="margin-top: 30px;">
+        <h3 style="color: #0071e3; margin-bottom: 20px; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 20px;">DETALLE DE DEUDAS</h3>
+        <table style="width: 100%; border-collapse: collapse; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; font-size: 13px;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white;">
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Contrato</th>
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Producto</th>
+              <th style="padding: 15px 10px; text-align: left; font-weight: 700;">Entidad</th>
+              <th style="padding: 15px 10px; text-align: right; font-weight: 700;">Original</th>
+              <th style="padding: 15px 10px; text-align: center; font-weight: 700;">Desc.</th>
+              <th style="padding: 15px 10px; text-align: right; font-weight: 700;">Final</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${deudasHTML}
+          </tbody>
+          <tfoot>
+            <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #0071e3;">
+              <td colspan="3" style="padding: 15px 10px; font-weight: 700; font-size: 14px; text-align: right; border: 1px solid #dee2e6;">TOTALES:</td>
+              <td style="padding: 15px 10px; text-align: right; font-weight: 700; font-size: 14px; color: #dc3545; border: 1px solid #dee2e6;">${formatCurrency(totalOriginal)}</td>
+              <td style="padding: 15px 10px; text-align: center; font-weight: 700; font-size: 14px; border: 1px solid #dee2e6;">${descuentoMedio.toFixed(1)}%</td>
+              <td style="padding: 15px 10px; text-align: right; font-weight: 700; font-size: 14px; color: #28a745; border: 1px solid #dee2e6;">${formatCurrency(totalFinal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Términos y Condiciones -->
+      <div style="margin-top: 40px; padding: 25px; background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 12px;">
+        <h4 style="margin-top: 0; color: #856404; font-size: 18px; font-weight: 700;">
+          ⚠️ TÉRMINOS Y CONDICIONES
+        </h4>
+        <ul style="margin: 15px 0; padding-left: 25px; color: #856404; font-size: 14px; line-height: 1.8;">
+          <li style="margin-bottom: 8px;">Este plan está sujeto a la aprobación final de las entidades acreedoras</li>
+          <li style="margin-bottom: 8px;">Las condiciones pueden variar según la respuesta de cada acreedor</li>
+          <li style="margin-bottom: 8px;">El cliente se compromete a mantener al día los pagos acordados</li>
+          <li style="margin-bottom: 8px;">DMD Asesores proporcionará seguimiento y gestión integral del plan</li>
+        </ul>
+      </div>
+
+      <!-- Pie de Página -->
+      <div style="text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; padding-top: 20px; border-top: 2px solid #dee2e6;">
+        <p style="margin: 8px 0; font-weight: 500;">📄 Documento confidencial - Uso exclusivo del cliente</p>
+        <p style="margin: 8px 0;">🕒 Generado: ${new Date().toLocaleDateString('es-ES', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric'
+        })} a las ${new Date().toLocaleTimeString('es-ES')}</p>
+        <p style="margin: 8px 0; font-weight: 600; color: #0071e3;">🏢 DMD Asesores - Especialistas en reestructuración de deuda</p>
+      </div>
+
+    </div>
+  `;
+}
+
 export async function exportPlanToPDF(planData) {
   try {
-    showNotification('Generando PDF (test simple)...', 'info');
+    showNotification('Generando PDF profesional...', 'info');
 
-    // Cargar html2pdf
     const html2pdf = await ensureHtml2PdfLoaded();
-    console.log('✅ html2pdf cargado');
 
-    // Crear elemento DIRECTAMENTE visible en la página
-    const testDiv = document.createElement('div');
-    testDiv.id = 'pdf-test-visible';
+    // Crear div con la FÓRMULA que funciona
+    const pdfDiv = document.createElement('div');
+    pdfDiv.id = 'pdf-professional-temp';
+    pdfDiv.innerHTML = generateProfessionalHTML(planData);
     
-    // CONTENIDO SÚPER SIMPLE
-    testDiv.innerHTML = `
-      <h1 style="color: red; font-size: 24px; margin: 20px;">DMD ASESORES - TEST</h1>
-      <h2 style="color: blue;">Cliente: ${planData.cliente || 'Sin nombre'}</h2>
-      <div style="background: yellow; padding: 20px; margin: 20px 0;">
-        <p><strong>Referencia:</strong> ${planData.referencia}</p>
-        <p><strong>DNI:</strong> ${planData.dni}</p>
-        <p><strong>Email:</strong> ${planData.email}</p>
-        <p><strong>Deuda Total:</strong> ${formatCurrency(planData.deudaTotal || 0)}</p>
-      </div>
-      <p style="font-size: 18px; font-weight: bold;">Si ves esto, el PDF funciona! ✅</p>
-    `;
-
-    // Estilos para hacerlo TOTALMENTE visible
-    testDiv.style.cssText = `
+    // ESTILOS EXACTOS que funcionaron
+    pdfDiv.style.cssText = `
       position: absolute !important;
       top: 0px !important;
       left: 0px !important;
-      width: 600px !important;
-      height: 400px !important;
+      width: 800px !important;
       background: white !important;
-      border: 3px solid red !important;
       padding: 20px !important;
-      z-index: 1000 !important;
+      z-index: -1000 !important;
       font-family: Arial, sans-serif !important;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5) !important;
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
     `;
 
-    // Agregar al DOM
-    document.body.appendChild(testDiv);
-    
-    // FORZAR reflow
-    testDiv.offsetHeight;
-    
-    console.log('✅ Div agregado al DOM');
-    console.log('📏 Visible:', testDiv.offsetParent !== null, 'Dimensiones:', testDiv.offsetWidth, 'x', testDiv.offsetHeight);
-    console.log('📍 Computed styles:', {
-      position: getComputedStyle(testDiv).position,
-      display: getComputedStyle(testDiv).display,
-      visibility: getComputedStyle(testDiv).visibility,
-      zIndex: getComputedStyle(testDiv).zIndex
-    });
+    // Agregar al DOM y forzar reflow
+    document.body.appendChild(pdfDiv);
+    pdfDiv.offsetHeight;
 
-    // Esperar 1 segundo para asegurar renderizado
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('📏 PDF Container visible:', pdfDiv.offsetParent !== null);
 
-    // Configuración MUY BÁSICA
+    // Esperar renderizado
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Configuración optimizada
     const filename = generateFilename(planData);
-    console.log('📄 Generando:', filename);
-
-    // GENERAR PDF DIRECTAMENTE del elemento visible
     await html2pdf()
-      .from(testDiv)
+      .from(pdfDiv)
       .set({
-        margin: 10,
+        margin: [8, 8, 8, 8],
         filename: filename,
-        image: { type: 'jpeg', quality: 0.8 },
+        image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 1,
-          logging: true,
-          useCORS: true
+          scale: 1.5,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'portrait' 
-        }
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       })
       .save();
 
-    console.log('✅ PDF generado!');
+    // Limpiar
+    pdfDiv.remove();
 
-    // Remover el div después de 2 segundos
-    setTimeout(() => {
-      if (testDiv && testDiv.parentNode) {
-        testDiv.remove();
-      }
-    }, 2000);
-
-    showNotification(`✅ PDF generado: ${filename}`, 'success');
+    showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
     return { success: true, filename };
 
   } catch (error) {
-    console.error('❌ Error:', error);
-    showNotification(`❌ Error: ${error.message}`, 'error');
+    console.error('Error exportando PDF:', error);
+    showNotification(`Error: ${error.message}`, 'error');
     throw error;
   }
 }
