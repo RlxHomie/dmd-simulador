@@ -60,26 +60,39 @@ export async function exportPlanToPDF(planData) {
 
     // Estilos para hacerlo TOTALMENTE visible
     testDiv.style.cssText = `
-      position: fixed;
-      top: 100px;
-      left: 100px;
-      width: 600px;
-      height: 400px;
-      background: white;
-      border: 3px solid red;
-      padding: 20px;
-      z-index: 9999;
-      font-family: Arial, sans-serif;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      position: absolute !important;
+      top: 0px !important;
+      left: 0px !important;
+      width: 600px !important;
+      height: 400px !important;
+      background: white !important;
+      border: 3px solid red !important;
+      padding: 20px !important;
+      z-index: 1000 !important;
+      font-family: Arial, sans-serif !important;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5) !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     `;
 
     // Agregar al DOM
     document.body.appendChild(testDiv);
+    
+    // FORZAR reflow
+    testDiv.offsetHeight;
+    
     console.log('✅ Div agregado al DOM');
     console.log('📏 Visible:', testDiv.offsetParent !== null, 'Dimensiones:', testDiv.offsetWidth, 'x', testDiv.offsetHeight);
+    console.log('📍 Computed styles:', {
+      position: getComputedStyle(testDiv).position,
+      display: getComputedStyle(testDiv).display,
+      visibility: getComputedStyle(testDiv).visibility,
+      zIndex: getComputedStyle(testDiv).zIndex
+    });
 
-    // Esperar 500ms para asegurar renderizado
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Esperar 1 segundo para asegurar renderizado
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Configuración MUY BÁSICA
     const filename = generateFilename(planData);
