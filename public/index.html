@@ -15,16 +15,17 @@
   <!-- External Libraries (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer crossorigin="anonymous"></script>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" defer crossorigin="anonymous"></script>
+  
+  <!-- ====== AGREGADO: CDN html2pdf para exportar PDF ====== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer crossorigin="anonymous"></script>
 
   <!-- App Styles -->
   <link rel="stylesheet" href="./styles/main.css">
 
-  <!-- PDF Module Styles -->
+  <!-- ====== AGREGADO: Estilos específicos para PDF ====== -->
   <style>
-    /* Optimizaciones específicas para PDF en producción */
     .html2pdf__page-break { 
       page-break-before: always; 
-      break-before: page; 
     }
     
     #plan-de-liquidacion {
@@ -32,43 +33,27 @@
       left: -9999px;
       top: -9999px;
       width: 210mm;
-      min-height: 297mm;
       background: white;
       padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Variable', Arial, sans-serif;
-      line-height: 1.6;
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
       color: #333;
-      font-size: 14px;
-      box-sizing: border-box;
     }
     
-    #plan-de-liquidacion.exporting {
-      position: static !important;
-      left: auto !important;
-      top: auto !important;
-      display: block !important;
-      visibility: visible !important;
-    }
-    
-    /* Optimizaciones específicas para renderizado PDF */
     @media print {
       #plan-de-liquidacion {
         position: static !important;
         left: auto !important;
         top: auto !important;
         width: 100% !important;
-        max-width: none !important;
         margin: 0 !important;
         padding: 15mm !important;
-        font-size: 12px !important;
-        line-height: 1.5 !important;
       }
       
       body {
         font-size: 12px !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: white !important;
       }
       
       table {
@@ -76,36 +61,19 @@
         width: 100% !important;
         page-break-inside: avoid !important;
         border-collapse: collapse !important;
-        margin: 10px 0 !important;
       }
       
       th, td {
         padding: 8px 6px !important;
         border: 1px solid #ddd !important;
-        vertical-align: top !important;
       }
       
       tr {
         page-break-inside: avoid !important;
-        page-break-after: auto !important;
       }
       
-      h1, h2, h3, h4 {
-        page-break-after: avoid !important;
-        margin-top: 0 !important;
-      }
-      
-      /* Ocultar elementos de UI en PDF */
-      .btn, button, .nav-tab, .status-bar, .notification-container,
-      .modal, .confirm-modal, .loading-screen {
+      .btn, button {
         display: none !important;
-      }
-      
-      /* Forzar colores en PDF */
-      * {
-        -webkit-print-color-adjust: exact !important;
-        color-adjust: exact !important;
-        print-color-adjust: exact !important;
       }
     }
   </style>
@@ -114,234 +82,15 @@
   <!-- Main App Container -->
   <div id="app" aria-live="polite"></div>
 
-  <!-- Contenedor oculto para PDF -->
+  <!-- ====== AGREGADO: Contenedor oculto para PDF ====== -->
   <div id="plan-de-liquidacion" aria-hidden="true">
     <!-- Contenido generado dinámicamente -->
   </div>
 
   <!-- App Scripts -->
-  <!-- Variables de entorno -->
+  <!-- Variables de entorno expuestas para el navegador -->
   <script src="./env.js"></script>
-  
-  <!-- Módulo PDF DMD - Optimizado para Producción -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" 
-          referrerpolicy="no-referrer" 
-          integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" 
-          crossorigin="anonymous"></script>
-
-  <script>
-  (function(global) {
-    'use strict';
-    
-    // Configuración optimizada para producción
-    const config = {
-      version: '2.1.1',
-      counterKey: 'dmd.pdf.counter',
-      debug: false, // false en producción
-      retryAttempts: 3,
-      timeoutMs: 30000
-    };
-
-    function log(...args) {
-      if (config.debug) console.log('[DMD PDF]', ...args);
-    }
-    
-    function nextCounter() {
-      if (typeof global.ultimoContadorFolio === 'number') {
-        global.ultimoContadorFolio++;
-        return global.ultimoContadorFolio;
-      }
-      const current = parseInt(localStorage.getItem(config.counterKey) || '0', 10) || 0;
-      const next = current + 1;
-      localStorage.setItem(config.counterKey, String(next));
-      return next;
-    }
-
-    function sanitizeFilename(str) {
-      return str.replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-_]/g, '')
-                .replace(/\s+/g, '_')
-                .substring(0, 50);
-    }
-
-    // Función principal optimizada para producción
-    async function exportPlanToPDF(opts = {}) {
-      log('Iniciando exportación PDF', opts);
-      
-      let attempt = 0;
-      const maxAttempts = config.retryAttempts;
-      
-      while (attempt < maxAttempts) {
-        try {
-          const node = opts.node || document.getElementById('plan-de-liquidacion');
-          if (!node) {
-            throw new Error('Contenedor PDF no encontrado');
-          }
-
-          if (!node.innerHTML.trim()) {
-            throw new Error('El contenido del plan está vacío');
-          }
-          
-          const base = sanitizeFilename(opts.filenameBase || 'Plan');
-          const fecha = (opts.dateString || new Date().toISOString().slice(0, 10)).replaceAll('/', '-');
-          const folio = String(nextCounter()).padStart(4, '0');
-          const filename = `${base}_${fecha}_${folio}.pdf`;
-          
-          log(`Generando PDF (intento ${attempt + 1}/${maxAttempts}):`, filename);
-
-          // Preparar el nodo para exportación
-          const originalDisplay = node.style.display;
-          const originalClass = node.className;
-          const originalScrollY = global.scrollY;
-          
-          // Mostrar nodo temporalmente
-          node.style.display = 'block';
-          node.className = (originalClass + ' exporting').trim();
-          
-          // Scroll al top
-          try { 
-            global.scrollTo({ top: 0, behavior: 'instant' }); 
-          } catch(e) { 
-            global.scrollTo(0, 0); 
-          }
-
-          // Esperar un frame para que el DOM se actualice
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          
-          // Configuración optimizada
-          const dpr = Math.min(global.devicePixelRatio || 1, 2.5);
-          const opt = {
-            margin: opts.margins || [8, 8, 8, 8],
-            filename: filename,
-            image: { 
-              type: 'jpeg', 
-              quality: opts.quality || 0.98 
-            },
-            html2canvas: {
-              scale: dpr * (opts.scale || 1.4),
-              useCORS: true,
-              allowTaint: false,
-              backgroundColor: '#ffffff',
-              removeContainer: false,
-              logging: config.debug,
-              timeout: config.timeoutMs,
-              scrollX: 0,
-              scrollY: 0,
-              windowWidth: Math.max(document.documentElement.clientWidth, 800),
-              windowHeight: Math.max(document.documentElement.clientHeight, 600),
-              onrendered: function(canvas) {
-                log('Canvas renderizado:', canvas.width + 'x' + canvas.height);
-              },
-              ...opts.html2canvas
-            },
-            jsPDF: { 
-              unit: 'mm', 
-              format: opts.format || 'a4', 
-              orientation: opts.orientation || 'portrait',
-              compress: true,
-              putOnlyUsedFonts: true,
-              ...opts.jsPDF
-            },
-            pagebreak: { 
-              mode: opts.pagebreakMode || ['avoid-all', 'css', 'legacy']
-            }
-          };
-          
-          // Generar PDF con timeout
-          const pdfPromise = html2pdf().from(node).set(opt).save();
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout generando PDF')), config.timeoutMs)
-          );
-          
-          await Promise.race([pdfPromise, timeoutPromise]);
-          
-          log('PDF generado exitosamente:', filename);
-          
-          // Restaurar estado original
-          node.style.display = originalDisplay;
-          node.className = originalClass;
-          global.scrollTo(0, originalScrollY);
-          
-          return { 
-            success: true, 
-            filename, 
-            folio: folio,
-            attempt: attempt + 1,
-            size: node.innerHTML.length 
-          };
-
-        } catch (error) {
-          attempt++;
-          log(`Error en intento ${attempt}:`, error.message);
-          
-          if (attempt >= maxAttempts) {
-            throw new Error(`Error después de ${maxAttempts} intentos: ${error.message}`);
-          }
-          
-          // Esperar antes del siguiente intento
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
-    }
-
-    // Función para generar HTML optimizado
-    function generatePlanHTML(planData) {
-      if (!planData) {
-        throw new Error('Datos del plan requeridos');
-      }
-
-      log('Generando HTML del plan:', planData.referencia);
-      
-      function formatCurrency(amount) {
-        if (typeof amount !== 'number' || isNaN(amount)) return '€0.00';
-        return new Intl.NumberFormat('es-ES', {
-          style: 'currency',
-          currency: 'EUR',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }).format(amount);
-      }
-
-      function getEstadoTexto(estado) {
-        const estados = {
-          'simulado': 'Simulado',
-          'plan_creado': 'Plan Creado',
-          'plan_contratado': 'Contratado',
-          'primer_pago': 'Primer Pago',
-          'en_negociacion': 'En Negociación',
-          'aprobado': 'Aprobado',
-          'en_pago': 'En Pago',
-          'completado': 'Completado',
-          'cancelado': 'Cancelado'
-        };
-        return estados[estado] || estado;
-      }
-      
-      return `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color: #1a1a1a; line-height: 1.6; max-width: 100%;">
-          <!-- Cabecera corporativa -->
-          <div style="background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%); color: white; padding: 30px; text-align: center; margin-bottom: 30px; border-radius: 12px; print-color-adjust: exact;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">DMD ASESORES</h1>
-            <h2 style="margin: 10px 0 0 0; font-size: 20px; font-weight: 400; opacity: 0.95;">Plan de Reestructuración de Deuda</h2>
-          </div>
-
-          <!-- Grid de información -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-            <div>
-              <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL CLIENTE</h3>
-              <table style="width: 100%; font-size: 15px; border-spacing: 0;">
-                <tr><td style="padding: 6px 0; width: 90px; font-weight: 600;">Nombre:</td><td style="padding: 6px 0;">${planData.cliente?.nombre || planData.cliente || 'N/A'}</td></tr>
-                <tr><td style="padding: 6px 0; font-weight: 600;">DNI/NIE:</td><td style="padding: 6px 0; font-family: monospace;">${planData.cliente?.dni || planData.dni || 'N/A'}</td></tr>
-                <tr><td style="padding: 6px 0; font-weight: 600;">Email:</td><td style="padding: 6px 0; color: #0071e3;">${planData.cliente?.email || 'No especificado'}</td></tr>
-              </table>
-            </div>
-            <div>
-              <h3 style="color: #0071e3; margin: 0 0 20px 0; border-bottom: 3px solid #e3f2fd; padding-bottom: 10px; font-size: 18px;">DATOS DEL PLAN</h3>
-              <table style="width: 100%; font-size: 15px; border-spacing: 0;">
-                <tr><td style="padding: 6px 0; width: 90px; font-weight: 600;">Referencia:</td><td style="padding: 6px 0; font-family: monospace; color: #0071e3;">${planData.referencia || 'N/A'}</td></tr>
-                <tr><td style="padding: 6px 0; font-weight: 600;">Fecha:</td><td style="padding: 6px 0;">${new Date(planData.fecha).toLocaleDateString('es-ES', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</td></tr>
-                <tr><td style="padding: 6px 0; font-weight: 600;">Estado:</td><td style="padding: 6px 0;">
-                  <span style="background: #e3f2
+  <!-- App entry point -->
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
