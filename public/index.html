@@ -33,11 +33,23 @@
       left: -9999px;
       top: -9999px;
       width: 210mm;
+      min-height: 297mm;
       background: white;
       padding: 20px;
       font-family: Arial, sans-serif;
       line-height: 1.5;
       color: #333;
+      box-sizing: border-box;
+    }
+    
+    /* Cuando se va a exportar, mostrar el contenedor */
+    #plan-de-liquidacion.pdf-generating {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      visibility: visible !important;
+      display: block !important;
+      z-index: -1000;
     }
     
     @media print {
@@ -48,6 +60,8 @@
         width: 100% !important;
         margin: 0 !important;
         padding: 15mm !important;
+        visibility: visible !important;
+        display: block !important;
       }
       
       body {
@@ -72,7 +86,11 @@
         page-break-inside: avoid !important;
       }
       
-      .btn, button {
+      h1, h2, h3 {
+        page-break-after: avoid !important;
+      }
+      
+      .btn, button, .nav-tabs, .status-bar {
         display: none !important;
       }
     }
