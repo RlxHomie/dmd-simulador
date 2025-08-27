@@ -94,7 +94,7 @@ export class Simulador {
                 Número de cuotas
               </label>
               <input type="number" id="numCuotas" min="1" max="360" value="12" required>
-              <span class="help-text">Entre 1 y 360 meses</span>
+              <span class="help-text">Entre 1 y 36 meses</span>
             </div>
           </div>
 
@@ -770,3 +770,4 @@ export class Simulador {
     showNotification('Plan cargado correctamente', 'success');
   }
 }
+
