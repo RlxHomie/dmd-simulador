@@ -202,27 +202,29 @@ export async function exportPlanToPDF(planData) {
   try {
     showNotification('Generando PDF profesional...', 'info');
 
-    // html2pdf ya viene en index.html, pero mantenemos el fallback por si acaso
     const h2p = await ensureHtml2PdfLoaded();
 
     // Usar el contenedor previsto en index.html
     const pdfDiv = document.getElementById('plan-de-liquidacion');
     if (!pdfDiv) throw new Error('No se encontró el contenedor #plan-de-liquidacion');
 
-    // Preparar contenido y hacerlo visible (según CSS del proyecto)
+    // Inyectar el contenido y preparar visibilidad en el DOM real
     pdfDiv.innerHTML = generateProfessionalHTML(planData);
     pdfDiv.classList.add('pdf-generating');
-    // Evitar z-index negativo durante la captura
-    const previousZ = pdfDiv.style.zIndex;
+    const prevZ = pdfDiv.style.zIndex;
     pdfDiv.style.zIndex = '9999';
 
-    // Asegurar que el navegador pinte el layout antes de capturar
+    // Asegurar pintado antes de capturar
     await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
     if (document.fonts?.ready) { try { await document.fonts.ready; } catch {} }
 
+    // Sanity check (debug rápido)
+    const rect = pdfDiv.getBoundingClientRect();
+    if (!rect.height) console.warn('⚠️ #plan-de-liquidacion tiene altura 0 antes de capturar');
+
     const filename = generateFilename(planData);
 
-    // IMPORTANTE: set() -> from() -> save()
+    // Opciones: set() -> from() -> save()
     const opts = {
       margin: [10, 10, 10, 10],
       filename,
@@ -231,10 +233,22 @@ export async function exportPlanToPDF(planData) {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        removeContainer: true,
         scrollX: 0,
-        scrollY: 0
+        // 👉 Clave: asegurar estado correcto en el DOM CLONADO
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('plan-de-liquidacion');
+          if (el) {
+            el.classList.add('pdf-generating');
+            el.style.left = '0';
+            el.style.top = '0';
+            el.style.visibility = 'visible';
+            el.style.display = 'block';
+            el.style.zIndex = '9999';
+          }
+        }
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
       pagebreak: { mode: ['css', 'legacy'] }
     };
 
@@ -242,7 +256,7 @@ export async function exportPlanToPDF(planData) {
 
     // Limpieza
     pdfDiv.classList.remove('pdf-generating');
-    pdfDiv.style.zIndex = previousZ || '';
+    pdfDiv.style.zIndex = prevZ || '';
     pdfDiv.innerHTML = '';
 
     showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
@@ -250,10 +264,8 @@ export async function exportPlanToPDF(planData) {
   } catch (error) {
     console.error('❌ Error exportando PDF:', error);
     showNotification(`Error generando PDF: ${error.message}`, 'error');
-    // Intentar limpiar si algo quedó visible
-    const pdfDiv = document.getElementById('plan-de-liquidacion');
-    if (pdfDiv) { pdfDiv.classList.remove('pdf-generating'); pdfDiv.innerHTML = ''; }
+    const c = document.getElementById('plan-de-liquidacion');
+    if (c) { c.classList.remove('pdf-generating'); c.innerHTML = ''; }
     throw error;
   }
 }
-
