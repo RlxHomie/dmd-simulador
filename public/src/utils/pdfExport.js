@@ -207,37 +207,57 @@ export async function exportPlanToPDF(planData) {
     // Cargar librería si es necesario
     const html2pdf = await ensureHtml2PdfLoaded();
 
-    // Crear contenedor temporal
+    // Crear contenedor temporal visible
     let container = document.getElementById('plan-de-liquidacion');
     if (!container) {
       container = document.createElement('div');
       container.id = 'plan-de-liquidacion';
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '-9999px';
-      container.style.width = '210mm';
-      container.style.backgroundColor = 'white';
-      container.style.padding = '20px';
-      container.style.fontFamily = 'Arial, sans-serif';
       document.body.appendChild(container);
     }
 
     // Generar contenido HTML
     container.innerHTML = generatePlanHTML(planData);
 
+    // CRUCIAL: Hacer visible el contenedor temporalmente
+    const originalStyles = {
+      position: container.style.position,
+      left: container.style.left,
+      top: container.style.top,
+      visibility: container.style.visibility,
+      display: container.style.display
+    };
+
+    // Hacer visible para html2canvas
+    container.style.position = 'absolute';
+    container.style.left = '0';
+    container.style.top = '0';
+    container.style.visibility = 'visible';
+    container.style.display = 'block';
+    container.style.width = '210mm';
+    container.style.backgroundColor = 'white';
+    container.style.padding = '20px';
+    container.style.fontFamily = 'Arial, sans-serif';
+    container.style.zIndex = '-1000'; // Detrás de todo pero visible
+
+    // Esperar un frame para que se renderice
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
     // Configuración del PDF
     const filename = generateFilename(planData);
     const options = {
       margin: [8, 8, 8, 8],
       filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 0.95 },
       html2canvas: {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        windowWidth: 800,
+        windowHeight: 1200,
+        logging: false
       },
       jsPDF: {
         unit: 'mm',
@@ -250,6 +270,14 @@ export async function exportPlanToPDF(planData) {
 
     // Generar PDF
     await html2pdf().from(container).set(options).save();
+
+    // Restaurar estilos originales
+    container.style.position = originalStyles.position || 'absolute';
+    container.style.left = originalStyles.left || '-9999px';
+    container.style.top = originalStyles.top || '-9999px';
+    container.style.visibility = originalStyles.visibility || 'hidden';
+    container.style.display = originalStyles.display || 'none';
+    container.style.zIndex = '';
 
     showNotification(`PDF descargado: ${filename}`, 'success');
     
