@@ -200,110 +200,60 @@ function generateProfessionalHTML(planData) {
 
 export async function exportPlanToPDF(planData) {
   try {
-    showNotification('Preparando PDF profesional...', 'info');
+    showNotification('Generando PDF profesional...', 'info');
 
-    const html2pdf = await ensureHtml2PdfLoaded();
+    // html2pdf ya viene en index.html, pero mantenemos el fallback por si acaso
+    const h2p = await ensureHtml2PdfLoaded();
 
-    // Crear div VISIBLE temporalmente
-    const pdfDiv = document.createElement('div');
-    pdfDiv.id = 'pdf-professional-temp';
+    // Usar el contenedor previsto en index.html
+    const pdfDiv = document.getElementById('plan-de-liquidacion');
+    if (!pdfDiv) throw new Error('No se encontró el contenedor #plan-de-liquidacion');
+
+    // Preparar contenido y hacerlo visible (según CSS del proyecto)
     pdfDiv.innerHTML = generateProfessionalHTML(planData);
-    
-    // CLAVE: Hacer VISIBLE y en posición normal (no fixed)
-    pdfDiv.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 800px;
-      background: white;
-      padding: 20px;
-      z-index: 10000;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      box-shadow: 0 0 30px rgba(0,0,0,0.3);
-    `;
+    pdfDiv.classList.add('pdf-generating');
+    // Evitar z-index negativo durante la captura
+    const previousZ = pdfDiv.style.zIndex;
+    pdfDiv.style.zIndex = '9999';
 
-    // Agregar al DOM
-    document.body.appendChild(pdfDiv);
-    
-    // Scroll al inicio para evitar problemas
-    window.scrollTo(0, 0);
-    
-    // Mostrar mensaje al usuario
-    showNotification('Mostrando vista previa del documento...', 'info');
-    
-    // IMPORTANTE: Esperar más tiempo para renderizado completo
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Forzar layout estable antes de capturar (evita PDF en blanco)
-pdfDiv.style.display = 'block';
-
-// Forzar reflow
-// eslint-disable-next-line no-unused-expressions
-pdfDiv.offsetHeight;
-
-// Doble requestAnimationFrame para asegurar pintura
-await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
-
-// (opcional) si tienes fuentes web, espera un tick extra
-if (document.fonts && document.fonts.ready) {
-  try { await document.fonts.ready; } catch {}
-}
-
+    // Asegurar que el navegador pinte el layout antes de capturar
+    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+    if (document.fonts?.ready) { try { await document.fonts.ready; } catch {} }
 
     const filename = generateFilename(planData);
-    
-    showNotification('Generando PDF...', 'info');
-    
-    // Configuración optimizada para html2pdf
-    await html2pdf()
-      .from(pdfDiv)
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: filename,
-        image: { 
-          type: 'jpeg', 
-          quality: 0.95 
-        },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: pdfDiv.scrollWidth,
-          windowHeight: pdfDiv.scrollHeight
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait'
-        },
-        pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy']
-        }
-      })
-      .save();
 
-    // Remover el div después de generar
-    setTimeout(() => {
-      if (pdfDiv && pdfDiv.parentNode) {
-        pdfDiv.remove();
-      }
-    }, 500);
+    // IMPORTANTE: set() -> from() -> save()
+    const opts = {
+      margin: [10, 10, 10, 10],
+      filename,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    await h2p().set(opts).from(pdfDiv).save();
+
+    // Limpieza
+    pdfDiv.classList.remove('pdf-generating');
+    pdfDiv.style.zIndex = previousZ || '';
+    pdfDiv.innerHTML = '';
 
     showNotification(`✅ PDF profesional generado: ${filename}`, 'success');
     return { success: true, filename };
-
   } catch (error) {
     console.error('❌ Error exportando PDF:', error);
-    
-    // Limpiar en caso de error
-    const tempDiv = document.getElementById('pdf-professional-temp');
-    if (tempDiv) tempDiv.remove();
-    
     showNotification(`Error generando PDF: ${error.message}`, 'error');
+    // Intentar limpiar si algo quedó visible
+    const pdfDiv = document.getElementById('plan-de-liquidacion');
+    if (pdfDiv) { pdfDiv.classList.remove('pdf-generating'); pdfDiv.innerHTML = ''; }
     throw error;
   }
 }
+
