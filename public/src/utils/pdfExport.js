@@ -1,5 +1,5 @@
 // utils/pdfExport.js — Generación directa con jsPDF (sin html2pdf/html2canvas)
-import { showNotification } from '../notifications.js'; // ajusta a ../notifications.js si corresponde
+import { showNotification } from './notifications.js'; // ajusta a ../notifications.js si corresponde
 
 // Carga jsPDF si no existe
 async function ensureJsPDFLoaded() {
