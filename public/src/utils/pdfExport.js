@@ -5,7 +5,7 @@
 // ✔️ Salto de página en tabla y redibujo de cabecera
 // ✔️ Cálculos seguros (evitan divisiones por 0)
 
-import { showNotification } from '../notifications.js';
+import { showNotification } from './notifications.js';
 
 // --- Carga jsPDF si no existe ---
 async function ensureJsPDFLoaded() {
