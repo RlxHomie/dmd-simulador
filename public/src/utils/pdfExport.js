@@ -618,14 +618,27 @@ function tableDeudas(doc, rows, startY) {
   doc.text('TOTALES', x + 10, y + 7);
   
   // Valores totales con diseño espectacular
-  let cx = x + cols[0].w + cols[1].w + cols[2].w;
+  const totalCx = x + cols[0].w + cols[1].w + cols[2].w;
   
   // Total Original
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(COLORS.coral);
-  doc.text(fmtEUR(totalOriginal), cx + cols[3].w - 8, y + 15, { align: 'right' });
+  doc.text(fmtEUR(totalOriginal), totalCx + cols[3].w - 8, y + 15, { align: 'right' });
   
   // Descuento Medio con badge
   doc.setFillColor(COLORS.gold);
-  doc.roundedRect(cx + cols
+  doc.roundedRect(totalCx + cols[3].w + 15, y + 10, 30, 10, 5, 5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`-${descuentoMedio.toFixed(0)}%`, totalCx + cols[3].w + cols[4].w / 2, y + 16.5, { align: 'center' });
+  
+  // Total Final con efecto
+  drawGlowEffect(doc, totalCx + cols[3].w + cols[4].w + 10, y + 9, cols[5].w - 18, 12, COLORS.neonBlue, 1);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(COLORS.neonBlue);
+  doc.text(fmtEUR(totalFinal), totalCx + cols[3].w + cols[4].w + cols[5].w - 8, y + 16, { align: 'right' });
+  
+  return y + 35;
