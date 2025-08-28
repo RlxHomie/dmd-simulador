@@ -4,7 +4,6 @@
 // ✔️ Sin setGlobalAlpha (usa withAlpha/GState si está disponible)
 // ✔️ Salto de página en tabla y redibujo de cabecera
 // ✔️ Cálculos seguros (evitan divisiones por 0)
-// ✨ VERSIÓN MEJORADA PARA REPORTE EJECUTIVO
 
 import { showNotification } from './notifications.js';
 
@@ -65,33 +64,31 @@ async function imgToDataURL(path) {
   } catch { return null; }
 }
 
-// --- Constantes de layout / colores MEJORADOS ---
-const PAGE = { w: 210, h: 297, lm: 20, rm: 20, tm: 25, bm: 25 }; // mm - márgenes más amplios
+// --- Constantes de layout / colores ---
+const PAGE = { w: 210, h: 297, lm: 15, rm: 15, tm: 20, bm: 20 }; // mm
 
 const COLORS = {
   // Paleta Ejecutiva Profesional
-  primaryDark: '#1a202c',      // Azul marino profundo
-  primaryBlue: '#2563eb',      // Azul corporativo
-  primaryLight: '#3b82f6',     // Azul claro
-  
-  // Grises elegantes
-  charcoal: '#374151',         // Gris oscuro para texto
-  slate: '#64748b',            // Gris medio
-  lightGray: '#e2e8f0',        // Gris claro para fondos
-  pearl: '#f8fafc',            // Casi blanco
-  
-  // Acentos profesionales
-  success: '#059669',          // Verde éxito
-  warning: '#d97706',          // Naranja advertencia
-  accent: '#7c3aed',           // Púrpura elegante
-  gold: '#b45309',             // Dorado corporativo
-  
-  // Neutros
+  navyBlue: '#001f3f',
+  deepNavy: '#0a192f',
+  slateGray: '#2d3748',
+  lightGray: '#e2e8f0',
+
+  // Tonos neutros
+  charcoal: '#4a5568',
+  silver: '#a0aec0',
+  pearl: '#edf2f7',
   white: '#ffffff',
-  black: '#000000',
+
+  // Acentos sutiles
+  teal: '#319795',
+  forestGreen: '#2f855a',
+  gold: '#d69e2e',
+  crimson: '#e53e3e',
+  indigo: '#4c51bf',
 };
 
-// --- Helpers de dibujo mejorados ---
+// --- Helpers de dibujo seguros ---
 function hexToRgb(hex) {
   const h = hex.replace('#', '');
   const bigint = parseInt(h, 16);
@@ -124,372 +121,348 @@ function setTextHex(doc, hex) {
   doc.setTextColor(r, g, b);
 }
 
-// Sombra sutil profesional
-function drawSoftShadow(doc, x, y, w, h, radius = 8) {
-  for (let i = 3; i > 0; i--) {
-    const alpha = 0.08 / i;
-    const offset = i * 0.5;
+// Sombra suave rectangular
+function drawShadowEffect(doc, x, y, w, h, hexColor, intensity = 2) {
+  for (let i = 4; i > 0; i--) {
+    const alpha = (0.1 / 4) * (4 - i + 1);
+    const offset = i * intensity;
     withAlpha(doc, alpha, () => {
-      setFillHex(doc, COLORS.charcoal);
-      doc.roundedRect(x + offset, y + offset, w, h, radius, radius, 'F');
+      setFillHex(doc, hexColor);
+      doc.roundedRect(x - offset / 2 + offset / 4, y - offset / 2 + offset / 2, w + offset, h + offset, 8, 8, 'F');
     });
   }
 }
 
-// Gradiente vertical simulado
-function drawVerticalGradient(doc, x, y, w, h, colorTop, colorBottom, steps = 20) {
-  const topRgb = hexToRgb(colorTop);
-  const bottomRgb = hexToRgb(colorBottom);
-  const stepH = h / steps;
-  
-  for (let i = 0; i < steps; i++) {
-    const ratio = i / (steps - 1);
-    const r = Math.round(topRgb.r + (bottomRgb.r - topRgb.r) * ratio);
-    const g = Math.round(topRgb.g + (bottomRgb.g - topRgb.g) * ratio);
-    const b = Math.round(topRgb.b + (bottomRgb.b - topRgb.b) * ratio);
-    
-    doc.setFillColor(r, g, b);
-    doc.rect(x, y + i * stepH, w, stepH + 0.5, 'F');
-  }
+// Patrón de rayas sutiles
+function drawStripePattern(doc, x, y, w, h, hexColor, opacity = 0.05) {
+  withAlpha(doc, opacity, () => {
+    setDrawHex(doc, hexColor);
+    doc.setLineWidth(0.2);
+    const step = 3;
+    for (let i = 0; i < h; i += step) {
+      doc.line(x, y + i, x + w, y + i);
+    }
+  });
 }
 
-// Líneas decorativas elegantes
-function drawDecorativeLine(doc, x1, y1, x2, y2, color, thickness = 0.5) {
-  setDrawHex(doc, color);
-  doc.setLineWidth(thickness);
-  doc.line(x1, y1, x2, y2);
-  
-  // Puntos decorativos en los extremos
-  setFillHex(doc, color);
-  doc.circle(x1, y1, thickness, 'F');
-  doc.circle(x2, y2, thickness, 'F');
+// Patrón de grid sutil
+function drawGridPattern(doc, startX, startY, width, height, hexColor, opacity = 0.08) {
+  withAlpha(doc, opacity, () => {
+    setDrawHex(doc, hexColor);
+    doc.setLineWidth(0.1);
+    const gridSize = 5;
+    for (let i = 0; i <= width; i += gridSize) {
+      doc.line(startX + i, startY, startX + i, startY + height);
+    }
+    for (let j = 0; j <= height; j += gridSize) {
+      doc.line(startX, startY + j, startX + width, startY + j);
+    }
+  });
 }
 
-// --- Secciones del PDF MEJORADAS ---
+// --- Secciones del PDF ---
 function header(doc, plan, logoDataURL) {
-  // Fondo principal con gradiente
-  drawVerticalGradient(doc, 0, 0, PAGE.w, 70, COLORS.primaryDark, COLORS.primaryBlue);
-  
-  // Overlay sutil
-  withAlpha(doc, 0.1, () => {
-    setFillHex(doc, COLORS.white);
-    doc.rect(0, 0, PAGE.w, 70, 'F');
-  });
+  // Fondo superior limpio
+  setFillHex(doc, COLORS.navyBlue);
+  doc.rect(0, 0, PAGE.w, 50, 'F');
 
-  // Logo/Marca de empresa
-  withAlpha(doc, 0.95, () => {
-    setFillHex(doc, COLORS.white);
-    doc.roundedRect(PAGE.lm, 15, 60, 25, 8, 8, 'F');
-  });
-  
-  drawSoftShadow(doc, PAGE.lm, 15, 60, 25, 8);
+  // Patrón sutil
+  drawGridPattern(doc, 0, 0, PAGE.w, 50, COLORS.teal, 0.1);
 
+  // Logo
   if (logoDataURL) {
-    doc.addImage(logoDataURL, 'PNG', PAGE.lm + 15, 20, 30, 15);
+    doc.addImage(logoDataURL, 'PNG', PAGE.lm, 10, 40, 16);
   } else {
-    doc.setFont('helvetica', 'bold'); 
-    doc.setFontSize(16); 
-    setTextHex(doc, COLORS.primaryBlue);
-    doc.text('DMD', PAGE.lm + 15, 28);
-    doc.setFont('helvetica', 'normal'); 
-    doc.setFontSize(10); 
-    setTextHex(doc, COLORS.slate);
-    doc.text('ASESORES', PAGE.lm + 15, 35);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(255, 255, 255);
+    doc.text('DMD ASESORES', PAGE.lm, 22);
   }
 
-  // Título principal elegante
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(24); 
-  doc.setTextColor(255, 255, 255);
-  doc.text('PLAN DE REESTRUCTURACIÓN', PAGE.w - PAGE.rm, 30, { align: 'right' });
-  
-  doc.setFont('helvetica', 'normal'); 
-  doc.setFontSize(12); 
-  withAlpha(doc, 0.8, () => {
-    doc.setTextColor(255, 255, 255);
-    doc.text('FINANCIERA', PAGE.w - PAGE.rm, 40, { align: 'right' });
-  });
+  // Título elegante
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(255, 255, 255);
+  doc.text('PLAN DE REESTRUCTURACIÓN', PAGE.w - PAGE.rm, 22, { align: 'right' });
 
-  // Referencia con estilo ejecutivo
+  // Referencia sutil
   const ref = plan?.referencia || 'REF-000000';
-  setFillHex(doc, COLORS.white);
-  withAlpha(doc, 0.9, () => {
-    doc.roundedRect(PAGE.w - PAGE.rm - 65, 45, 65, 12, 6, 6, 'F');
-  });
-  
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(8); 
-  setTextHex(doc, COLORS.primaryBlue);
-  doc.text('REFERENCIA:', PAGE.w - PAGE.rm - 60, 50);
-  doc.setFont('helvetica', 'normal');
-  setTextHex(doc, COLORS.charcoal);
-  doc.text(ref, PAGE.w - PAGE.rm - 60, 54);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setTextHex(doc, COLORS.lightGray);
+  doc.text(ref, PAGE.w - PAGE.rm, 32, { align: 'right' });
 
-  // Línea inferior elegante
-  drawDecorativeLine(doc, PAGE.lm, 70, PAGE.w - PAGE.rm, 70, COLORS.primaryLight, 1);
+  // Línea divisoria limpia
+  setDrawHex(doc, COLORS.teal);
+  doc.setLineWidth(0.3);
+  doc.line(PAGE.lm, 50, PAGE.w - PAGE.rm, 50);
 }
 
 function clientAndPlanBlock(doc, plan, y) {
-  const leftCol = PAGE.w * 0.58;
-  const rightColW = PAGE.w - leftCol - PAGE.rm;
+  const blockHeight = 40;
 
-  // Panel cliente con diseño ejecutivo
+  // Fondo panel cliente
   setFillHex(doc, COLORS.white);
-  doc.roundedRect(PAGE.lm, y, leftCol - PAGE.lm - 8, 45, 12, 12, 'F');
-  drawSoftShadow(doc, PAGE.lm, y, leftCol - PAGE.lm - 8, 45, 12);
-  
-  // Borde sutil
-  setDrawHex(doc, COLORS.lightGray);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(PAGE.lm, y, leftCol - PAGE.lm - 8, 45, 12, 12, 'S');
+  doc.roundedRect(PAGE.lm, y, PAGE.w - PAGE.lm - PAGE.rm, blockHeight, 6, 6, 'F');
+  drawShadowEffect(doc, PAGE.lm, y, PAGE.w - PAGE.lm - PAGE.rm, blockHeight, COLORS.slateGray, 2);
 
-  // Icono de cliente profesional
-  setFillHex(doc, COLORS.primaryBlue);
-  doc.roundedRect(PAGE.lm + 10, y + 8, 25, 25, 12.5, 12.5, 'F');
-  
-  // Iniciales del cliente
+  // Info cliente
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14); setTextHex(doc, COLORS.navyBlue);
   const nombre = plan?.cliente || 'Sin especificar';
-  const iniciales = nombre.split(' ').map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase();
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(14); 
-  doc.setTextColor(255, 255, 255);
-  doc.text(iniciales, PAGE.lm + 22.5, y + 23, { align: 'center' });
+  doc.text(nombre.toUpperCase(), PAGE.lm + 10, y + 12);
 
-  // Información del cliente
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(14); 
-  setTextHex(doc, COLORS.charcoal);
-  doc.text(nombre.toUpperCase(), PAGE.lm + 40, y + 18);
-  
-  doc.setFont('helvetica', 'normal'); 
-  doc.setFontSize(10); 
-  setTextHex(doc, COLORS.slate);
-  doc.text(`DNI/NIE: ${plan?.dni || 'N/A'}`, PAGE.lm + 40, y + 26);
-  
-  setTextHex(doc, COLORS.primaryBlue); 
-  doc.text((plan?.email || 'No especificado').toLowerCase(), PAGE.lm + 40, y + 34);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); setTextHex(doc, COLORS.charcoal);
+  doc.text(`DNI/NIE: ${plan?.dni || 'N/A'}   |   Email: ${plan?.email || 'No especificado'}`, PAGE.lm + 10, y + 22);
 
-  // Panel de estado ejecutivo
-  const rightX = leftCol + 5;
-  setFillHex(doc, COLORS.primaryDark);
-  doc.roundedRect(rightX, y, rightColW, 45, 12, 12, 'F');
-  
-  // Overlay decorativo
-  withAlpha(doc, 0.1, () => {
-    setFillHex(doc, COLORS.primaryLight);
-    doc.roundedRect(rightX, y, rightColW, 20, 12, 12, 'F');
-    doc.rect(rightX, y + 10, rightColW, 10, 'F');
-  });
-
-  // Fecha elegante
+  // Estado y fecha
   const fecha = new Date(plan?.fecha || Date.now());
-  const dia = String(fecha.getDate()).padStart(2, '0');
-  const mes = fecha.toLocaleDateString('es-ES', { month: 'long' }).toUpperCase();
-  const año = fecha.getFullYear();
+  const fechaStr = fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  doc.text(`Fecha: ${fechaStr}`, PAGE.lm + 10, y + 32);
 
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(22); 
-  doc.setTextColor(255, 255, 255);
-  doc.text(dia, rightX + 12, y + 20);
-  
-  doc.setFont('helvetica', 'normal'); 
-  doc.setFontSize(9); 
-  withAlpha(doc, 0.8, () => {
-    doc.setTextColor(255, 255, 255);
-    doc.text(`${mes} ${año}`, rightX + 12, y + 28);
-  });
-
-  // Estado con diseño profesional
   const estado = String(plan?.estado || 'SIMULADO').replace('_', ' ').toUpperCase();
-  const estadoColor = estado === 'ACTIVO' ? COLORS.success : 
-                     estado === 'SIMULADO' ? COLORS.warning : COLORS.accent;
-
+  const estadoColor = estado === 'ACTIVO' ? COLORS.forestGreen : estado === 'SIMULADO' ? COLORS.gold : COLORS.crimson;
   setFillHex(doc, estadoColor);
-  doc.roundedRect(rightX + 12, y + 32, 50, 8, 4, 4, 'F');
-  
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(7); 
-  doc.setTextColor(255, 255, 255);
-  doc.text(estado, rightX + 37, y + 37, { align: 'center' });
+  doc.roundedRect(PAGE.w - PAGE.rm - 60, y + 10, 50, 20, 4, 4, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
+  doc.text(estado, PAGE.w - PAGE.rm - 35, y + 22, { align: 'center' });
 
-  return y + 55;
+  return y + blockHeight + 15;
 }
 
 function summaryCards(doc, totals, y) {
-  const cardSize = (PAGE.w - PAGE.lm - PAGE.rm - 15) / 2;
-  const cardHeight = 60;
+  const cardW = (PAGE.w - PAGE.lm - PAGE.rm - 15) / 2;
+  const cardH = 45;
 
-  function createExecutiveCard(x, y, title, value, subtitle, colorHex, icon = null) {
-    // Sombra profesional
-    drawSoftShadow(doc, x, y, cardSize, cardHeight, 12);
-    
-    // Fondo de la tarjeta
+  function createMetricCard(x, yPos, title, value, subtitle, colorHex) {
     setFillHex(doc, COLORS.white);
-    doc.roundedRect(x, y, cardSize, cardHeight, 12, 12, 'F');
-    
-    // Borde elegante
+    doc.roundedRect(x, yPos, cardW, cardH, 6, 6, 'F');
+    drawShadowEffect(doc, x, yPos, cardW, cardH, COLORS.slateGray, 1.5);
+
     setDrawHex(doc, COLORS.lightGray);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(x, y, cardSize, cardHeight, 12, 12, 'S');
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, yPos, cardW, cardH, 6, 6, 'S');
 
-    // Barra superior de color
-    setFillHex(doc, colorHex);
-    doc.roundedRect(x, y, cardSize, 8, 12, 12, 'F');
-    doc.rect(x, y + 4, cardSize, 4, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); setTextHex(doc, COLORS.charcoal);
+    doc.text(title.toUpperCase(), x + 10, yPos + 12);
 
-    // Título
-    doc.setFont('helvetica', 'normal'); 
-    doc.setFontSize(9); 
-    setTextHex(doc, COLORS.slate);
-    doc.text(title.toUpperCase(), x + 12, y + 20);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); setTextHex(doc, colorHex);
+    doc.text(value, x + 10, yPos + 28);
 
-    // Valor principal
-    doc.setFont('helvetica', 'bold'); 
-    doc.setFontSize(18); 
-    setTextHex(doc, COLORS.charcoal);
-    doc.text(value, x + 12, y + 35);
-
-    // Subtítulo/indicador
     if (subtitle) {
-      withAlpha(doc, 0.1, () => {
-        setFillHex(doc, colorHex);
-        doc.roundedRect(x + 12, y + 42, 60, 12, 6, 6, 'F');
-      });
-      
-      doc.setFont('helvetica', 'bold'); 
-      doc.setFontSize(8); 
-      setTextHex(doc, colorHex);
-      doc.text(subtitle, x + 42, y + 49, { align: 'center' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setTextHex(doc, COLORS.silver);
+      doc.text(subtitle, x + 10, yPos + 38);
     }
-
-    // Icono decorativo
-    withAlpha(doc, 0.1, () => {
-      setFillHex(doc, colorHex);
-      doc.circle(x + cardSize - 20, y + 30, 12, 'F');
-    });
   }
 
-  // Tarjetas principales
-  createExecutiveCard(PAGE.lm, y, 'Deuda Original', fmtEUR(totals.totalOriginal), 'IMPORTE INICIAL', COLORS.warning);
+  // Cards en dos filas
+  createMetricCard(PAGE.lm, y, 'Deuda Original', fmtEUR(totals.totalOriginal), 'Importe inicial total', COLORS.crimson);
+  createMetricCard(PAGE.lm + cardW + 15, y, 'Ahorro Total', fmtEUR(totals.ahorro), `-${((totals.ahorro / (totals.totalOriginal || 1)) * 100).toFixed(0)}%`, COLORS.forestGreen);
 
-  const base = totals.totalOriginal || 1;
-  const ahorroPercent = ((totals.ahorro / base) * 100).toFixed(0);
-  createExecutiveCard(PAGE.lm + cardSize + 15, y, 'Total Negociado', fmtEUR(totals.totalFinal), `AHORRO ${ahorroPercent}%`, COLORS.primaryBlue);
+  y += cardH + 10;
 
-  y += cardHeight + 15;
+  createMetricCard(PAGE.lm, y, 'Total a Pagar', fmtEUR(totals.totalFinal), 'Importe final negociado', COLORS.teal);
+  createMetricCard(PAGE.lm + cardW + 15, y, 'Cuota Mensual', fmtEUR(totals.cuotaMensual), `${totals.numCuotas} meses`, COLORS.indigo);
 
-  createExecutiveCard(PAGE.lm, y, 'Cuota Mensual', fmtEUR(totals.cuotaMensual), `${totals.numCuotas} CUOTAS`, COLORS.accent);
-  createExecutiveCard(PAGE.lm + cardSize + 15, y, 'Beneficio Total', fmtEUR(totals.ahorro), 'AHORRO NETO', COLORS.success);
+  // Barra de progreso limpia
+  y += cardH + 15;
+  const progW = PAGE.w - PAGE.lm - PAGE.rm;
+  const progH = 6;
+  setFillHex(doc, COLORS.lightGray);
+  doc.roundedRect(PAGE.lm, y, progW, progH, 3, 3, 'F');
 
-  // Indicador de progreso elegante
-  y += cardHeight + 20;
-  
-  // Título del indicador
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(12); 
-  setTextHex(doc, COLORS.charcoal);
-  doc.text('RESUMEN FINANCIERO', PAGE.lm, y - 5);
+  const prog = totals.totalFinal / (totals.totalOriginal || 1);
+  const fillW = progW * Math.max(0, Math.min(1, prog));
+  setFillHex(doc, COLORS.teal);
+  doc.roundedRect(PAGE.lm, y, fillW, progH, 3, 3, 'F');
 
-  const progressWidth = PAGE.w - PAGE.lm - PAGE.rm;
-  const progressHeight = 12;
-  
-  // Fondo del progreso
-  setFillHex(doc, COLORS.pearl);
-  doc.roundedRect(PAGE.lm, y, progressWidth, progressHeight, 6, 6, 'F');
-  
-  // Borde
-  setDrawHex(doc, COLORS.lightGray);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(PAGE.lm, y, progressWidth, progressHeight, 6, 6, 'S');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setTextHex(doc, COLORS.charcoal);
+  doc.text(`Progreso: ${(prog * 100).toFixed(0)}% del total original (${((1 - prog) * 100).toFixed(0)}% ahorro)`, PAGE.lm, y + progH + 8);
 
-  // Progreso
-  const progress = Math.min(1, totals.totalFinal / base);
-  const fill = progressWidth * progress;
-  
-  setFillHex(doc, COLORS.success);
-  doc.roundedRect(PAGE.lm, y, fill, progressHeight, 6, 6, 'F');
-
-  // Etiquetas del progreso
-  doc.setFont('helvetica', 'bold'); 
-  doc.setFontSize(8); 
-  setTextHex(doc, COLORS.charcoal);
-  doc.text(`REDUCCIÓN: ${ahorroPercent}%`, PAGE.lm, y - 2);
-  
-  setTextHex(doc, COLORS.success);
-  doc.text(`BENEFICIO: ${fmtEUR(totals.ahorro)}`, PAGE.w - PAGE.rm, y - 2, { align: 'right' });
-
-  return y + 25;
+  return y + progH + 20;
 }
 
-// --- Tabla de deudas con diseño ejecutivo ---
+// --- Tabla de deudas con salto de página ---
 function tableDeudas(doc, rows, startY) {
   const x = PAGE.lm;
   const w = PAGE.w - PAGE.lm - PAGE.rm;
   const rowH = 12;
-  const headH = 40;
+  const headH = 20;
 
   const cols = [
-    { key: 'contrato', title: 'CONTRATO', w: w * 0.15 },
-    { key: 'producto', title: 'PRODUCTO', w: w * 0.15 },
-    { key: 'entidad',  title: 'ENTIDAD',  w: w * 0.24 },
-    { key: 'importeOriginal', title: 'ORIGINAL', w: w * 0.16, align: 'right', fmt: v => fmtEUR(v) },
-    { key: 'descuento', title: 'DESCUENTO', w: w * 0.12, align: 'center', fmt: v => `${toNumber(v).toFixed(0)}%` },
-    { key: 'importeFinal', title: 'NEGOCIADO', w: w * 0.18, align: 'right', fmt: v => fmtEUR(v) },
+    { key: 'contrato', title: 'Contrato', w: w * 0.15 },
+    { key: 'producto', title: 'Producto', w: w * 0.15 },
+    { key: 'entidad',  title: 'Entidad',  w: w * 0.24 },
+    { key: 'importeOriginal', title: 'Original', w: w * 0.16, align: 'right', fmt: v => fmtEUR(v) },
+    { key: 'descuento', title: 'Desc.', w: w * 0.12, align: 'center', fmt: v => `${toNumber(v).toFixed(0)}%` },
+    { key: 'importeFinal', title: 'Final', w: w * 0.18, align: 'right', fmt: v => fmtEUR(v) },
   ];
 
-  function drawExecutiveHeader(y) {
-    // Título de sección
-    doc.setFont('helvetica', 'bold'); 
-    doc.setFontSize(16); 
-    setTextHex(doc, COLORS.charcoal);
-    doc.text('DETALLE DE DEUDAS', x, y - 15);
-    
-    drawDecorativeLine(doc, x, y - 10, x + 80, y - 10, COLORS.primaryBlue, 1);
+  function drawDebtHeader(y) {
+    // Título sección
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); setTextHex(doc, COLORS.navyBlue);
+    doc.text('DETALLE DE DEUDAS', x, y - 8);
 
-    // Header de tabla con gradiente
-    drawVerticalGradient(doc, x, y, w, headH, COLORS.primaryDark, COLORS.primaryBlue);
-    
-    // Borde del header
-    setDrawHex(doc, COLORS.primaryLight);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(x, y, w, headH, 8, 8, 'S');
+    // Header tabla
+    setFillHex(doc, COLORS.deepNavy);
+    doc.roundedRect(x, y, w, headH, 4, 4, 'F');
 
-    // Títulos de columnas
-    doc.setFont('helvetica', 'bold'); 
-    doc.setFontSize(9); 
-    doc.setTextColor(255, 255, 255);
-    let cx = x + 10;
-    
-    cols.forEach((c, i) => {
-      if (c.align === 'right') {
-        doc.text(c.title, cx + c.w - 10, y + 15, { align: 'right' });
-      } else if (c.align === 'center') {
-        doc.text(c.title, cx + c.w / 2, y + 15, { align: 'center' });
-      } else {
-        doc.text(c.title, cx + 5, y + 15);
-      }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
+    let cx = x;
+    cols.forEach(c => {
+      const tx = c.align === 'right' ? cx + c.w - 8 : c.align === 'center' ? cx + c.w / 2 : cx + 8;
+      const alignOpt = c.align ? { align: c.align } : {};
+      doc.text(c.title.toUpperCase(), tx, y + 12, alignOpt);
       cx += c.w;
     });
+  }
 
-    // Subtítulos
-    doc.setFont('helvetica', 'normal'); 
-    doc.setFontSize(7); 
-    withAlpha(doc, 0.8, () => {
-      doc.setTextColor(255, 255, 255);
-      let subtitleCx = x + 10;
-      const subtitles = ['Identificador', 'Tipo de deuda', 'Entidad acreedora', 'Importe inicial', 'Reducción aplicada', 'Importe final'];
-      
-      cols.forEach((c, i) => {
-        if (c.align === 'right') {
-          doc.text(subtitles[i], subtitleCx + c.w - 10, y + 25, { align: 'right' });
-        } else if (c.align === 'center') {
-          doc.text(subtitles[i], subtitleCx + c.w / 2, y + 25, { align: 'center' });
-        } else {
-          doc.text(subtitles[i], subtitleCx + 5, y + 25);
-        }
-        subtitleCx += c.w;
-      });
+  function maybePageBreak(y) {
+    if (y + rowH + PAGE.bm > PAGE.h) {
+      doc.addPage();
+      const ny = PAGE.tm + 10;
+      drawDebtHeader(ny);
+      return ny + headH + 5;
+    }
+    return y;
+  }
+
+  let y = startY + 15;
+  drawDebtHeader(y);
+  y += headH + 5;
+
+  // Filas con alternancia sutil
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  setDrawHex(doc, COLORS.lightGray);
+  doc.setLineWidth(0.1);
+  rows.forEach((r, i) => {
+    y = maybePageBreak(y);
+    if (i % 2 === 0) {
+      setFillHex(doc, COLORS.pearl);
+      doc.rect(x, y - rowH + 3, w, rowH, 'F');
+    }
+
+    let rowCx = x;
+    cols.forEach(c => {
+      const raw = r[c.key];
+      const text = c.fmt ? c.fmt(raw) : String(raw ?? '—');
+      const ty = y + 3;
+      const color = c.key === 'importeFinal' ? COLORS.teal : c.key === 'descuento' ? COLORS.gold : c.key === 'importeOriginal' ? COLORS.crimson : COLORS.charcoal;
+      setTextHex(doc, color);
+
+      const tx = c.align === 'right' ? rowCx + c.w - 8 : c.align === 'center' ? rowCx + c.w / 2 : rowCx + 8;
+      const alignOpt = c.align ? { align: c.align } : {};
+      doc.text(text, tx, ty, alignOpt);
+
+      rowCx += c.w;
     });
 
-    // Badge
-(Content truncated due to size limit. Use page ranges or line ranges to read remaining content)
+    doc.line(x, y + 3, x + w, y + 3);
+    y += rowH;
+  });
+
+  // Línea final
+  doc.line(x, y + 3 - rowH, x + w, y + 3 - rowH);
+
+  // Totales
+  const totalOriginal = rows.reduce((s, r) => s + toNumber(r.importeOriginal), 0);
+  const totalFinal = rows.reduce((s, r) => s + toNumber(r.importeFinal), 0);
+  const ds = rows.map(r => toNumber(r.descuento)).filter(n => !Number.isNaN(n));
+  const descuentoMedio = ds.length ? (ds.reduce((a, b) => a + b, 0) / ds.length) : 0;
+
+  y = maybePageBreak(y + 10);
+
+  setFillHex(doc, COLORS.lightGray);
+  doc.rect(x, y, w, 20, 'F');
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); setTextHex(doc, COLORS.navyBlue);
+  doc.text('TOTALES', x + 8, y + 12);
+
+  const totalCx = x + cols[0].w + cols[1].w + cols[2].w;
+  setTextHex(doc, COLORS.crimson);
+  doc.text(fmtEUR(totalOriginal), totalCx + cols[3].w - 8, y + 12, { align: 'right' });
+
+  setTextHex(doc, COLORS.gold);
+  doc.text(`-${descuentoMedio.toFixed(0)}%`, totalCx + cols[3].w + cols[4].w / 2, y + 12, { align: 'center' });
+
+  setTextHex(doc, COLORS.teal);
+  doc.text(fmtEUR(totalFinal), totalCx + cols[3].w + cols[4].w + cols[5].w - 8, y + 12, { align: 'right' });
+
+  return y + 30;
+}
+
+function termsAndFooter(doc, y) {
+  // Página nueva si no cabe
+  if (y + 60 > PAGE.h - PAGE.bm) { doc.addPage(); y = PAGE.tm; }
+
+  // Sección términos
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); setTextHex(doc, COLORS.navyBlue);
+  doc.text('INFORMACIÓN IMPORTANTE', PAGE.lm, y);
+  y += 8;
+
+  const terms = [
+    'Este plan está sujeto a la aprobación final de las entidades acreedoras.',
+    'Las condiciones pueden ajustarse basado en las negociaciones individuales.',
+    'Es esencial mantener los pagos acordados para el éxito del plan.',
+    'DMD Asesores proporcionará seguimiento y gestión continua.'
+  ];
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); setTextHex(doc, COLORS.charcoal);
+  terms.forEach((t, i) => {
+    doc.text(`- ${t}`, PAGE.lm + 2, y + (i * 6));
+  });
+  y += terms.length * 6 + 10;
+
+  // Footer
+  const footY = PAGE.h - 20;
+  setDrawHex(doc, COLORS.silver);
+  doc.setLineWidth(0.2);
+  doc.line(PAGE.lm, footY, PAGE.w - PAGE.rm, footY);
+
+  const genDate = new Date();
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setTextHex(doc, COLORS.silver);
+  doc.text('Documento confidencial - Solo para uso interno del cliente', PAGE.lm, footY + 10);
+  const fechaGen = genDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  doc.text(`Generado el: ${fechaGen}`, PAGE.w - PAGE.rm, footY + 10, { align: 'right' });
+}
+
+// ====== API compatible con tu simulador ======
+export async function exportPlanToPDF(planData) {
+  showNotification('Generando PDF...', 'info');
+
+  const jsPDF = await ensureJsPDFLoaded();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+
+  // Logo opcional (si existe /logo.png en tu public)
+  const logoDataURL = await imgToDataURL('logo.png');
+
+  // Normalizar deudas
+  const deudas = Array.isArray(planData?.deudas) ? planData.deudas.map(d => {
+    const original = toNumber(d?.importeOriginal ?? d?.deuda ?? d?.debes ?? 0);
+    const final = toNumber(d?.importeFinal ?? d?.pagar ?? d?.pagarias ?? 0);
+    const desc = d?.descuento != null ? toNumber(d?.descuento) : (original ? (1 - (final / original)) * 100 : 0);
+    return {
+      contrato: d?.contrato || '—',
+      producto: d?.producto || '—',
+      entidad:  d?.entidad  || d?.acreedor || '—',
+      importeOriginal: original,
+      descuento: desc,
+      importeFinal: final,
+    };
+  }) : [];
+
+  // Totales
+  const totalOriginal = deudas.reduce((s, r) => s + toNumber(r.importeOriginal), 0);
+  const totalFinal = deudas.reduce((s, r) => s + toNumber(r.importeFinal), 0);
+  const cuotaMensual = toNumber(planData?.cuotaMensual ?? 0);
+  const numCuotas = Number(planData?.numCuotas ?? 0);
+  const ahorro = Math.max(0, totalOriginal - totalFinal);
+  const ds = deudas.map(r => toNumber(r.descuento)).filter(n => !Number.isNaN(n));
+  const descuentoMedio = ds.length ? (ds.reduce((a, b) => a + b, 0) / ds.length) : 0;
+
+  // Dibujo
+  header(doc, planData, logoDataURL);
+  let y = clientAndPlanBlock(doc, planData, 60);
+  y = summaryCards(doc, { totalOriginal, totalFinal, cuotaMensual, ahorro, descuentoMedio, numCuotas }, y + 10);
+  y = tableDeudas(doc, deudas, y + 15);
+  termsAndFooter(doc, y + 10);
+
+  const filename = generateFilename(planData);
+  doc.save(filename);
+
+  showNotification(`✅ PDF generado: ${filename}`, 'success');
+  return { success: true, filename };
+}
