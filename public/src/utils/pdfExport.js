@@ -511,17 +511,17 @@ function tableDeudas(doc, rows, startY) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(COLORS.silver);
-  cx = x + 8;
+  let subtitleCx = x + 8;
   const subtitles = ['Identificador', 'Tipo', 'Acreedor', 'Importe inicial', 'Reducción', 'Importe negociado'];
   cols.forEach((c, i) => {
     if (c.align === 'right') {
-      doc.text(subtitles[i], cx + c.w - 8, y + 15, { align: 'right' });
+      doc.text(subtitles[i], subtitleCx + c.w - 8, y + 15, { align: 'right' });
     } else if (c.align === 'center') {
-      doc.text(subtitles[i], cx + c.w / 2, y + 15, { align: 'center' });
+      doc.text(subtitles[i], subtitleCx + c.w / 2, y + 15, { align: 'center' });
     } else {
-      doc.text(subtitles[i], cx + 2, y + 15);
+      doc.text(subtitles[i], subtitleCx + 2, y + 15);
     }
-    cx += c.w;
+    subtitleCx += c.w;
   });
   
   // Indicadores visuales de métricas
@@ -558,7 +558,7 @@ function tableDeudas(doc, rows, startY) {
     doc.rect(x, y - 3, 2, rowH, 'F');
     doc.setGlobalAlpha(1);
     
-    let cx = x + 8;
+    let rowCx = x + 8;
     cols.forEach(c => {
       const raw = r[c.key];
       const text = c.fmt ? c.fmt(raw) : String(raw ?? '—');
@@ -580,13 +580,13 @@ function tableDeudas(doc, rows, startY) {
       }
       
       if (c.align === 'right') {
-        doc.text(text, cx + c.w - 8, ty, { align: 'right' });
+        doc.text(text, rowCx + c.w - 8, ty, { align: 'right' });
       } else if (c.align === 'center') {
-        doc.text(text, cx + c.w / 2, ty, { align: 'center' });
+        doc.text(text, rowCx + c.w / 2, ty, { align: 'center' });
       } else {
-        doc.text(text, cx + 2, ty);
+        doc.text(text, rowCx + 2, ty);
       }
-      cx += c.w;
+      rowCx += c.w;
     });
     
     y += rowH;
@@ -642,3 +642,4 @@ function tableDeudas(doc, rows, startY) {
   doc.text(fmtEUR(totalFinal), totalCx + cols[3].w + cols[4].w + cols[5].w - 8, y + 16, { align: 'right' });
   
   return y + 35;
+}
