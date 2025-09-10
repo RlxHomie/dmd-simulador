@@ -9,7 +9,7 @@ class ExcelApiService {
     this.sheets = config.graph.sheets;
 
     // Nota: Asegúrate de que las claves en config.graph.tables estén en minúsculas
-    this.tables = config.graph.tables || { planes: 'TablePlanes', entradas: 'TableEntradas' }; // Claves en minúsculas
+    this.tables = config.graph.tables || { planes: 'TablePlanes', entradas: 'TableEntradas' };
 
     // Añadir tabla de usuarios si existe en config
     if (config.graph.tables && config.graph.tables.usuarios) {
@@ -17,6 +17,25 @@ class ExcelApiService {
     }
 
     this.sessionId = null; // ID de la sesión persistente
+  }
+
+  // ========= Helpers de normalización =========
+  _norm(v) {
+    return String(v ?? '')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  _toBool(v, defaultVal = true) {
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'number') return v !== 0;
+    const s = this._norm(v);
+    if (!s) return defaultVal;
+    if (['true','1','si','sí','s','y','yes','activo','active','enabled'].includes(s)) return true;
+    if (['false','0','no','n','inactivo','inactive','disabled','off'].includes(s)) return false;
+    return defaultVal;
   }
 
   // Crear una sesión persistente
@@ -78,7 +97,7 @@ class ExcelApiService {
       const response = await fetch(url, options);
 
       if (!response.ok) {
-        // Reintentar si la sesión expiró
+        // Reintentar si la sesión expiró o permisos
         if (response.status === 401 || response.status === 403) {
           this.sessionId = null;
           await this.createSession();
@@ -99,7 +118,14 @@ class ExcelApiService {
     }
   }
 
-  // Leer datos de una hoja (usedRange)
+  // ========= Utilidades de lectura =========
+  // Leer rango de una TABLA (incluye encabezados y filas)
+  async readTableRange(tableName) {
+    const endpoint = `/me/drive/items/${this.fileId}/workbook/tables('${tableName}')/range`;
+    return await this.makeRequest(endpoint);
+  }
+
+  // Leer datos de una HOJA (usedRange)
   async readSheet(sheetName) {
     const escapedSheetName = this.escapeSheetName(sheetName);
     const endpoint = `/me/drive/items/${this.fileId}/workbook/worksheets('${escapedSheetName}')/usedRange`;
@@ -115,15 +141,15 @@ class ExcelApiService {
   }
 
   // Agregar nueva fila (o múltiples filas) a una tabla
-  async appendRow(sheetName, values) {
-    // sheetName aquí se usa como clave para this.tables (en minúsculas)
-    const tableName = this.tables[sheetName.toLowerCase()] || 'Table1';
+  async appendRow(sheetKey, values) {
+    // sheetKey aquí se usa como clave para this.tables (en minúsculas)
+    const tableName = this.tables[String(sheetKey).toLowerCase()] || 'Table1';
     const endpoint = `/me/drive/items/${this.fileId}/workbook/tables('${tableName}')/rows`;
     const body = { values: Array.isArray(values[0]) ? values : [values] };
     return await this.makeRequest(endpoint, 'POST', body);
   }
 
-  // ======== PLANES ========
+  // ========= PLANES =========
 
   async getPlanes() {
     try {
@@ -208,7 +234,7 @@ class ExcelApiService {
     }
   }
 
-  // ======== ENTRADAS ========
+  // ========= ENTRADAS =========
 
   async getEntradas() {
     try {
@@ -264,55 +290,57 @@ class ExcelApiService {
     }
   }
 
-  // ======== USUARIOS ========
-
+  // ========= USUARIOS =========
   /**
    * Lee Usuarios desde:
    *  - Tabla (preferida) si existe `config.graph.tables.usuarios` (e.g., 'TableUsuarios')
    *  - Hoja 'Usuarios' (usedRange) como fallback
-   * Requiere encabezados: Nombre | (Email|Correo|user_upn|UPN) | Perfil
+   *
+   * Encabezados tolerantes:
+   *  - Nombre:  Nombre | Name | DisplayName
+   *  - Email:   Email | Correo | user_upn | UPN | Correo Corporativo | Correo_Corporativo
+   *  - Perfil:  Perfil | Rol | Role | Perfil App
+   *  - Activo:  Activo | Active | Estado | Enabled
    */
   async getUsuarios() {
     try {
       let result;
 
       if (this.tables.usuarios) {
-        // Leer TODA la tabla incluyendo headers
         const tableName = this.tables.usuarios;
-        const endpoint = `/me/drive/items/${this.fileId}/workbook/tables('${tableName}')/range`;
-        result = await this.makeRequest(endpoint);
+        result = await this.readTableRange(tableName);
       } else {
-        // Fallback por hoja
         const sheetName = this.sheets.usuarios || 'Usuarios';
-        const escaped = this.escapeSheetName(sheetName);
-        const endpoint = `/me/drive/items/${this.fileId}/workbook/worksheets('${escaped}')/usedRange`;
-        result = await this.makeRequest(endpoint);
+        result = await this.readSheet(sheetName);
       }
 
       const values = result?.values || [];
       if (!values.length || values.length < 2) return [];
 
-      const headers = values[0].map(h => String(h || '').trim());
+      const rawHeaders = values[0].map(h => String(h || '').trim());
+      const headersNorm = rawHeaders.map(h => this._norm(h));
       const rows = values.slice(1);
 
-      // Helper: indexOf case-insensitive
-      const idx = (nameOptions) => {
-        const arr = Array.isArray(nameOptions) ? nameOptions : [nameOptions];
-        return arr.reduce((found, name) => {
-          if (found !== -1) return found;
-          const i = headers.findIndex(h => h.toLowerCase() === String(name).toLowerCase());
-          return i !== -1 ? i : -1;
-        }, -1);
+      // Helper: indexOf con normalización y múltiples alias
+      const idx = (aliases) => {
+        const arr = Array.isArray(aliases) ? aliases : [aliases];
+        for (const a of arr) {
+          const i = headersNorm.findIndex(hn => hn === this._norm(a));
+          if (i !== -1) return i;
+        }
+        return -1;
       };
 
-      const colNombre = idx('Nombre');
-      const colPerfil = idx('Perfil');
-      const colEmail = idx(['Email', 'Correo', 'user_upn', 'UPN', 'Correo Corporativo']);
+      const colNombre = idx(['Nombre','Name','DisplayName']);
+      const colPerfil = idx(['Perfil','Rol','Role','Perfil App','Perfil_App']);
+      const colEmail  = idx(['Email','Correo','user_upn','UPN','Correo Corporativo','Correo_Corporativo']);
+      const colActivo = idx(['Activo','Active','Estado','Enabled']);
 
       return rows.map(r => ({
-        nombre: colNombre !== -1 ? (r[colNombre] || '') : '',
-        email:  colEmail  !== -1 ? (r[colEmail]  || '') : '',
-        perfil: colPerfil !== -1 ? (r[colPerfil] || 'Gestion') : 'Gestion'
+        nombre: colNombre !== -1 ? (r[colNombre] ?? '') : '',
+        email:  colEmail  !== -1 ? (r[colEmail]  ?? '') : '',
+        perfil: colPerfil !== -1 ? (r[colPerfil] ?? 'Gestion') : 'Gestion',
+        activo: colActivo !== -1 ? this._toBool(r[colActivo], true) : true
       }));
     } catch (error) {
       console.error('Error reading usuarios:', error);
