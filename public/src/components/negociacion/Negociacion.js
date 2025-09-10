@@ -1,4 +1,4 @@
-// /components/negociacion/Negociacion.js
+// /src/components/negociacion/Negociacion.js
 import { excelApi } from '../../utils/excelApi.js';
 import { showNotification } from '../../utils/notifications.js';
 
@@ -92,6 +92,18 @@ export class Negociacion {
     window.negociacion = this;
   }
 
+  // Llamado desde app.js en la sincronización
+  async refresh() {
+    try {
+      await this._cargarDatos();
+      this._pintarClientes(this.clientes);
+      this._pintarDeudas(this.deudas);
+    } catch (e) {
+      console.error('[Negociacion] refresh error:', e);
+      showNotification('No se pudo refrescar Negociación', 'error');
+    }
+  }
+
   destroy() {
     this.container.innerHTML = '';
     // (Si necesitas, podrías desregistrar eventos aquí)
@@ -122,8 +134,8 @@ export class Negociacion {
       .sort((a, b) => a.apellidos.localeCompare(b.apellidos, 'es') || a.nombre.localeCompare(b.nombre, 'es'));
 
     // 2) DEUDAS desde PLANES
-    const planes = await excelApi.getPlanes();
     // planes: [{ referencia, fecha, estado, deudas:[{ contrato, producto, entidad, antiguedad, importeOriginal, descuento, importeFinal }] }]
+    const planes = await excelApi.getPlanes();
     const tmp = [];
 
     for (const p of planes) {
@@ -250,7 +262,6 @@ export class Negociacion {
     const parts = txt.split(/\s+/);
     if (parts.length === 1) return { nombre: this._titleCase(parts[0]), apellidos: '' };
     // Heurística simple: primer token → nombre; resto → apellidos.
-    // Si quieres soportar nombres compuestos (p.ej. "Juan Carlos"), avísame y lo ajusto.
     const nombre = this._titleCase(parts[0]);
     const apellidos = this._titleCase(parts.slice(1).join(' '));
     return { nombre, apellidos };
@@ -290,5 +301,3 @@ export class Negociacion {
 
 // Export por defecto también
 export default Negociacion;
-
-
