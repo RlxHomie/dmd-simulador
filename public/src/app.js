@@ -5,6 +5,7 @@ import { showNotification, initNotifications } from './utils/notifications.js';
 import { Dashboard } from './components/Dashboard.js';
 import { Simulador } from './components/Simulador.js';
 import { Seguimiento } from './components/Seguimiento.js';
+import { excelApi } from './utils/excelApi.js'; // ← para el fallback de Negociación
 
 class App {
   constructor() {
@@ -189,108 +190,147 @@ class App {
     }
   }
 
-// UI específica para Negociación (con diagnóstico y fallback por Blob)
-async showNegociacionUI() {
-  // Ocultar tabs de gestión
-  const navTabs = document.querySelector('.nav-tabs');
-  if (navTabs) navTabs.style.display = 'none';
+  // UI específica para Negociación (con diagnóstico y fallback por Blob)
+  async showNegociacionUI() {
+    // Ocultar tabs de gestión
+    const navTabs = document.querySelector('.nav-tabs');
+    if (navTabs) navTabs.style.display = 'none';
 
-  // Destruir componentes de gestión si estaban creados
-  this.teardownGestionComponents();
+    // Destruir componentes de gestión si estaban creados
+    this.teardownGestionComponents();
 
-  // Contenedor
-  const container = document.getElementById('contentContainer');
-  container.innerHTML = `
-    <div class="negociacion-header">
-      <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
-        Módulo de Negociación
-      </h1>
-      <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-        Gestión integral de clientes, deudas y movimientos financieros
-      </p>
-    </div>
-  `;
+    // Contenedor
+    const container = document.getElementById('contentContainer');
+    container.innerHTML = `
+      <div class="negociacion-header">
+        <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
+          Módulo de Negociación
+        </h1>
+        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+          Gestión integral de clientes, deudas y movimientos financieros
+        </p>
+      </div>
+    `;
 
-  // Rutas candidatas (ajústalas si tu archivo está en otro sitio)
-  const candidates = [
-    './components/negociacion/Negociacion.js', // public/src/components/negociacion/Negociacion.js
-    './components/Negociacion.js'              // public/src/components/Negociacion.js
-  ];
+    // Rutas candidatas (ajústalas si tu archivo está en otro sitio)
+    const candidates = [
+      './components/negociacion/Negociacion.js', // public/src/components/negociacion/Negociacion.js
+      './components/Negociacion.js'              // public/src/components/Negociacion.js
+    ];
 
-  // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
-  const tryImport = async (url) => {
-    try {
-      // 1) Diagnóstico: ¿qué devuelve el servidor?
-      const res = await fetch(url, { cache: 'no-store' });
-      const ct = res.headers.get('content-type') || '';
-      const text = await res.text();
-      console.log('[Negociacion] probe', { url, status: res.status, contentType: ct, preview: text.slice(0, 120) });
-
-      if (!res.ok) {
-        throw new Error('HTTP ' + res.status);
-      }
-
-      // 2) Si parece HTML/JSON, importará como módulo y fallará ⇒ forzamos Blob como "text/javascript"
-      const looksLikeHTML = /^\s*</.test(text);
-      const looksLikeJSON = /^\s*[{[]/.test(text);
-
-      if (!looksLikeHTML && !looksLikeJSON) {
-        // Podría ser JS válido: intenta import directo
-        try {
-          return await import(url);
-        } catch (e) {
-          console.warn('[Negociacion] import directo falló, intentaré Blob fallback', e);
-        }
-      } else {
-        console.warn('[Negociacion] El servidor devolvió HTML/JSON en', url);
-      }
-
-      // 3) Blob fallback: fuerza MIME JS y realiza import desde ObjectURL
-      const blob = new Blob([text], { type: 'text/javascript' });
-      const objURL = URL.createObjectURL(blob);
+    // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
+    const tryImport = async (url) => {
       try {
-        const mod = await import(/* @vite-ignore */ objURL);
-        URL.revokeObjectURL(objURL);
-        return mod;
-      } catch (e) {
-        URL.revokeObjectURL(objURL);
-        throw e;
+        // 1) Diagnóstico: ¿qué devuelve el servidor?
+        const res = await fetch(url, { cache: 'no-store' });
+        const ct = res.headers.get('content-type') || '';
+        const text = await res.text();
+        console.log('[Negociacion] probe', { url, status: res.status, contentType: ct, preview: text.slice(0, 120) });
+
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status);
+        }
+
+        // 2) Si parece HTML/JSON, importará como módulo y fallará ⇒ forzamos Blob como "text/javascript"
+        const looksLikeHTML = /^\s*</.test(text);
+        const looksLikeJSON = /^\s*[{[]/.test(text);
+
+        if (!looksLikeHTML && !looksLikeJSON) {
+          // Podría ser JS válido: intenta import directo
+          try {
+            return await import(url);
+          } catch (e) {
+            console.warn('[Negociacion] import directo falló, intentaré Blob fallback', e);
+          }
+        } else {
+          console.warn('[Negociacion] El servidor devolvió HTML/JSON en', url);
+        }
+
+        // 3) Blob fallback: fuerza MIME JS y realiza import desde ObjectURL
+        const blob = new Blob([text], { type: 'text/javascript' });
+        const objURL = URL.createObjectURL(blob);
+        try {
+          const mod = await import(/* @vite-ignore */ objURL);
+          URL.revokeObjectURL(objURL);
+          return mod;
+        } catch (e) {
+          URL.revokeObjectURL(objURL);
+          throw e;
+        }
+      } catch (err) {
+        console.warn('[Negociacion] No se pudo importar', url, err);
+        return null;
       }
-    } catch (err) {
-      console.warn('[Negociacion] No se pudo importar', url, err);
-      return null;
+    };
+
+    let mod = null;
+    for (const url of candidates) {
+      mod = await tryImport(url);
+      if (mod) break;
     }
-  };
 
-  let mod = null;
-  for (const url of candidates) {
-    mod = await tryImport(url);
-    if (mod) break;
+    if (!mod) {
+      // === Fallback visible para no bloquear la app ===
+      console.warn('Usando fallback Negociación inline (archivo no publicado en Netlify)');
+
+      class NegociacionFallback {
+        constructor(container) { this.container = container; }
+        async render() {
+          this.container.innerHTML += `
+            <div class="neg-fallback" style="margin-top:12px; border:1px solid #444; border-radius:10px; padding:12px;">
+              <h3 style="margin:0 0 6px 0;">Negociación (modo fallback)</h3>
+              <p style="color:var(--text-secondary)">
+                El módulo <code>/src/components/negociacion/Negociacion.js</code> no está publicado.
+                Se muestra una vista mínima mientras corriges el deploy.
+              </p>
+              <div id="negFallbackData" style="margin-top:10px; font-size:0.95rem;"></div>
+            </div>
+          `;
+          try {
+            const [entradas, planes] = await Promise.all([
+              excelApi.getEntradas().catch(() => []),
+              excelApi.getPlanes().catch(() => [])
+            ]);
+            const el = this.container.querySelector('#negFallbackData');
+            const clientes = new Set((entradas || []).map(e => (e?.dni || '').trim()).filter(Boolean));
+            const deudas = (planes || []).reduce((acc, p) => acc + (Array.isArray(p.deudas) ? p.deudas.length : 0), 0);
+            el.innerHTML = `
+              <ul style="margin:0; padding-left:18px;">
+                <li>Clientes detectados (por DNI desde Entradas): <b>${clientes.size}</b></li>
+                <li>Deudas detectadas (desde Planes): <b>${deudas}</b></li>
+              </ul>
+              <p style="margin-top:8px;">Publica el archivo en:
+                <code>public/src/components/negociacion/Negociacion.js</code>
+              </p>
+            `;
+          } catch {
+            /* noop */
+          }
+        }
+      }
+
+      this.components.negociacion = new NegociacionFallback(container);
+      await this.components.negociacion.render();
+      showNotification('Negociación cargada en modo fallback (publica el módulo para la vista completa)', 'warning');
+      return;
+    }
+
+    // Acepta export nombrado o default
+    const Ctor = mod.Negociacion || mod.default;
+    if (typeof Ctor !== 'function') {
+      showNotification('El módulo de Negociación no exporta una clase válida', 'error');
+      console.error('Exports encontrados:', Object.keys(mod));
+      return;
+    }
+
+    try {
+      this.components.negociacion = new Ctor(container);
+      await this.components.negociacion.render();
+    } catch (err) {
+      console.error('Error iniciando Negociacion:', err);
+      showNotification('No se pudo iniciar Negociación', 'error');
+    }
   }
-
-  if (!mod) {
-    showNotification('No se pudo cargar el módulo de Negociación (revisa ruta y contenido del archivo)', 'error');
-    console.error('Todas las rutas fallaron:', candidates);
-    return;
-  }
-
-  // Acepta export nombrado o default
-  const Ctor = mod.Negociacion || mod.default;
-  if (typeof Ctor !== 'function') {
-    showNotification('El módulo de Negociación no exporta una clase válida', 'error');
-    console.error('Exports encontrados:', Object.keys(mod));
-    return;
-  }
-
-  try {
-    this.components.negociacion = new Ctor(container);
-    await this.components.negociacion.render();
-  } catch (err) {
-    console.error('Error iniciando Negociacion:', err);
-    showNotification('No se pudo iniciar Negociación', 'error');
-  }
-}
-
 
   // UI de Gestión (tabs clásicas)
   showGestionUI() {
@@ -552,4 +592,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
-
