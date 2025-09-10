@@ -1,1036 +1,292 @@
-import { storageService } from '../../utils/storage.js';
-import { showNotification } from '../../utils/notifications.js';
-import { excelApi } from '../../utils/excelApi.js';
+// /components/negociacion/Negociacion.js
+import { excelApi } from '../../excelApi.js';
+import { showNotification } from '../../notifications.js';
 
+// Exportamos nombrado y por defecto para evitar problemas con el import dinámico
 export class Negociacion {
-    constructor(container) {
-        this.container = container;
-        this.allClientsData = [];
-        this.currentClientIndex = -1;
-        this.selectedClient = null;
-        this.debtsData = [];
-        this.movementsData = [];
-        this.savingsData = { ahorroReal: 0, ahorroDisponible: 0 };
-    }
+  constructor(container) {
+    this.container = container;
+    this.clientes = []; // [{ nombre, apellidos, dni }]
+    this.deudas = [];   // [{ entidad, producto, numeroCredito, importeDeuda, estado }]
+    this._listenersBound = false;
+    this._stylesInjected = false;
+  }
 
-    async render() {
-        this.container.innerHTML = `
-            <div class="negociacion-container">
-                <!-- Barra de herramientas -->
-                <div class="toolbar-negociacion">
-                    <div class="toolbar-left">
-                        <button id="btnNuevoCliente" class="btn btn-primario">
-                            <i class="fas fa-user-plus"></i>
-                            Nuevo Cliente
-                        </button>
-                        <button id="btnGuardarCambios" class="btn btn-success">
-                            <i class="fas fa-save"></i>
-                            Guardar Cambios
-                        </button>
-                    </div>
-                    <div class="toolbar-right">
-                        <button id="btnRefrescar" class="btn btn-secundario">
-                            <i class="fas fa-sync"></i>
-                            Actualizar
-                        </button>
-                    </div>
-                </div>
+  // ============ PUBLIC ============
+  async render() {
+    this._injectStyles();
 
-                <!-- Búsqueda de clientes -->
-                <section class="section-card">
-                    <div class="section-header bg-blue">
-                        <h2><i class="fas fa-search"></i> Buscar Cliente</h2>
-                    </div>
-                    <div class="section-body">
-                        <div class="search-container">
-                            <input type="text" id="clientSearchInput" 
-                                   placeholder="Buscar por nombre, apellidos o DNI..." 
-                                   class="search-input">
-                            <button id="btnBuscar" class="btn btn-primario">
-                                <i class="fas fa-search"></i>
-                                Buscar
-                            </button>
-                        </div>
-                        <div id="searchResults" class="search-results"></div>
-                    </div>
-                </section>
+    this.container.innerHTML = `
+      <div class="neg-wrap">
+        <div class="neg-header">
+          <h2>Módulo de Negociación</h2>
+          <div class="neg-actions">
+            <button id="btnNegRecargar" class="btn btn-light">Recargar datos</button>
+          </div>
+        </div>
 
-                <!-- Datos del cliente -->
-                <section class="section-card">
-                    <div class="section-header bg-green">
-                        <h2><i class="fas fa-user"></i> Datos del Cliente</h2>
-                        <button id="btnGuardarCliente" class="btn btn-small btn-light">
-                            <i class="fas fa-save"></i>
-                            Guardar Cliente
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="nombre">Nombre</label>
-                                <input type="text" id="nombre" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="apellidos">Apellidos</label>
-                                <input type="text" id="apellidos" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="dni">DNI</label>
-                                <input type="text" id="dni" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="direccion">Dirección</label>
-                                <input type="text" id="direccion" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="telefono">Teléfono</label>
-                                <input type="tel" id="telefono" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="correo">Correo Electrónico</label>
-                                <input type="email" id="correo" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Panel de deudas -->
-                <section class="section-card">
-                    <div class="section-header bg-red">
-                        <h2><i class="fas fa-credit-card"></i> Panel de Deudas</h2>
-                        <button id="btnAgregarDeuda" class="btn btn-small btn-light">
-                            <i class="fas fa-plus"></i>
-                            Agregar Deuda
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Entidad</th>
-                                        <th>Entidad Original</th>
-                                        <th>Producto</th>
-                                        <th>Nº Crédito</th>
-                                        <th>Estado</th>
-                                        <th>Importe</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="debtsTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Panel de ahorros -->
-                <section class="section-card">
-                    <div class="section-header bg-purple">
-                        <h2><i class="fas fa-piggy-bank"></i> Panel de Ahorros</h2>
-                        <button id="btnAgregarMovimiento" class="btn btn-small btn-light">
-                            <i class="fas fa-plus"></i>
-                            Nuevo Movimiento
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <!-- Resumen de ahorros -->
-                        <div class="savings-summary">
-                            <div class="savings-card gradient-green">
-                                <div class="savings-info">
-                                    <p class="savings-label">Ahorro Real</p>
-                                    <p id="ahorroReal" class="savings-value">€0.00</p>
-                                </div>
-                                <i class="fas fa-wallet savings-icon"></i>
-                            </div>
-                            <div class="savings-card gradient-blue">
-                                <div class="savings-info">
-                                    <p class="savings-label">Ahorro Disponible</p>
-                                    <p id="ahorroDisponible" class="savings-value">€0.00</p>
-                                </div>
-                                <i class="fas fa-coins savings-icon"></i>
-                            </div>
-                        </div>
-
-                        <!-- Histórico de movimientos -->
-                        <h3 class="subsection-title">
-                            <i class="fas fa-history"></i> Histórico de Movimientos
-                        </h3>
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Fecha</th>
-                                        <th>Clase</th>
-                                        <th>Aportaciones</th>
-                                        <th>Comisión Mensual</th>
-                                        <th>Liquidación</th>
-                                        <th>Provisiones</th>
-                                        <th>Comisión Éxito</th>
-                                        <th>Coste Devolución</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="movementsTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
+        <div class="neg-grid">
+          <!-- CLIENTES -->
+          <section class="neg-card">
+            <div class="neg-card-head">
+              <h3>Clientes (Entradas)</h3>
+              <div class="neg-right">
+                <input id="filtroClientes" class="neg-input" type="text" placeholder="Filtrar por nombre, apellidos o DNI" />
+                <span class="neg-pill" id="countClientes">0</span>
+              </div>
             </div>
-        `;
-
-        this.attachEventListeners();
-        await this.loadClientsData();
-        this.addStyles();
-    }
-
-    attachEventListeners() {
-        // Botones principales
-        document.getElementById('btnNuevoCliente')?.addEventListener('click', () => this.nuevoCliente());
-        document.getElementById('btnGuardarCambios')?.addEventListener('click', () => this.guardarCambios());
-        document.getElementById('btnRefrescar')?.addEventListener('click', () => this.loadClientsData());
-        document.getElementById('btnGuardarCliente')?.addEventListener('click', () => this.guardarCliente());
-        
-        // Búsqueda
-        document.getElementById('btnBuscar')?.addEventListener('click', () => this.buscarClientes());
-        document.getElementById('clientSearchInput')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.buscarClientes();
-        });
-        
-        // Deudas y movimientos
-        document.getElementById('btnAgregarDeuda')?.addEventListener('click', () => this.agregarDeuda());
-        document.getElementById('btnAgregarMovimiento')?.addEventListener('click', () => this.agregarMovimiento());
-        
-        // Validaciones
-        this.setupValidations();
-    }
-
-    setupValidations() {
-        // Validación DNI
-        document.getElementById('dni')?.addEventListener('blur', (e) => {
-            const dniRegex = /^[0-9]{8}[A-Za-z]$/;
-            if (e.target.value && !dniRegex.test(e.target.value)) {
-                showNotification('Formato de DNI inválido (8 números + 1 letra)', 'error');
-                e.target.classList.add('input-error');
-            } else {
-                e.target.classList.remove('input-error');
-            }
-        });
-        
-        // Validación email
-        document.getElementById('correo')?.addEventListener('blur', (e) => {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (e.target.value && !emailRegex.test(e.target.value)) {
-                showNotification('Formato de email inválido', 'error');
-                e.target.classList.add('input-error');
-            } else {
-                e.target.classList.remove('input-error');
-            }
-        });
-        
-        // Validación teléfono
-        document.getElementById('telefono')?.addEventListener('blur', (e) => {
-            const phoneRegex = /^[+]?[\d\s\-()]{9,}$/;
-            if (e.target.value && !phoneRegex.test(e.target.value)) {
-                showNotification('Formato de teléfono inválido', 'error');
-                e.target.classList.add('input-error');
-            } else {
-                e.target.classList.remove('input-error');
-            }
-        });
-    }
-
-    async loadClientsData() {
-        try {
-            showNotification('Cargando datos...', 'info');
-            
-            // Cargar clientes desde Excel usando excelApi
-            const response = await excelApi.makeRequest(
-                `/me/drive/items/${excelApi.fileId}/workbook/worksheets('Clientes')/usedRange`
-            );
-            
-            if (response && response.values && response.values.length > 1) {
-                const headers = response.values[0];
-                const rows = response.values.slice(1);
-                
-                this.allClientsData = rows.map(row => {
-                    const client = {};
-                    headers.forEach((header, index) => {
-                        client[header.toLowerCase()] = row[index] || '';
-                    });
-                    return client;
-                });
-            }
-            
-            showNotification('Datos cargados correctamente', 'success');
-        } catch (error) {
-            console.error('Error cargando datos:', error);
-            // Si no existe la hoja Clientes, inicializar vacío
-            this.allClientsData = [];
-            showNotification('No se encontraron datos de clientes', 'warning');
-        }
-    }
-
-    buscarClientes() {
-        const searchTerm = document.getElementById('clientSearchInput').value.toLowerCase();
-        const resultsContainer = document.getElementById('searchResults');
-        
-        if (!searchTerm) {
-            resultsContainer.innerHTML = '';
-            return;
-        }
-        
-        const results = this.allClientsData.filter(client =>
-            (client.nombre && client.nombre.toLowerCase().includes(searchTerm)) ||
-            (client.apellidos && client.apellidos.toLowerCase().includes(searchTerm)) ||
-            (client.dni && client.dni.toLowerCase().includes(searchTerm))
-        );
-        
-        resultsContainer.innerHTML = results.map((client, index) => `
-            <div class="search-result-item" onclick="window.negociacion.seleccionarCliente(${index})">
-                <h4>${client.nombre} ${client.apellidos}</h4>
-                <p>DNI: ${client.dni} | Tel: ${client.telefono}</p>
+            <div class="neg-table-wrap">
+              <table id="tablaClientes" class="neg-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Apellidos</th>
+                    <th>DNI</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
             </div>
-        `).join('');
-        
-        if (results.length === 0) {
-            resultsContainer.innerHTML = '<p class="no-results">No se encontraron resultados</p>';
-        }
+          </section>
+
+          <!-- DEUDAS -->
+          <section class="neg-card">
+            <div class="neg-card-head">
+              <h3>Deudas (Planes)</h3>
+              <div class="neg-right">
+                <input id="filtroDeudas" class="neg-input" type="text" placeholder="Filtrar por entidad, producto o Nº crédito" />
+                <span class="neg-pill" id="countDeudas">0</span>
+              </div>
+            </div>
+            <div class="neg-table-wrap">
+              <table id="tablaDeudas" class="neg-table">
+                <thead>
+                  <tr>
+                    <th>Entidad</th>
+                    <th>Producto</th>
+                    <th>Nº Crédito</th>
+                    <th class="neg-right">Importe Deuda</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    `;
+
+    try {
+      await this._cargarDatos();
+      this._pintarClientes(this.clientes);
+      this._pintarDeudas(this.deudas);
+      this._bindEvents();
+      showNotification('Datos de negociación cargados', 'success');
+    } catch (err) {
+      console.error('[Negociacion] Error al cargar:', err);
+      showNotification('No se pudieron cargar los datos de negociación', 'error');
     }
 
-    seleccionarCliente(index) {
-        this.currentClientIndex = index;
-        this.selectedClient = this.allClientsData[index];
-        
-        // Cargar datos en el formulario
-        document.getElementById('nombre').value = this.selectedClient.nombre || '';
-        document.getElementById('apellidos').value = this.selectedClient.apellidos || '';
-        document.getElementById('dni').value = this.selectedClient.dni || '';
-        document.getElementById('direccion').value = this.selectedClient.direccion || '';
-        document.getElementById('telefono').value = this.selectedClient.telefono || '';
-        document.getElementById('correo').value = this.selectedClient.correo || '';
-        
-        // Cargar deudas y movimientos
-        this.cargarDeudasCliente();
-        this.cargarMovimientosCliente();
-        
-        // Limpiar búsqueda
-        document.getElementById('searchResults').innerHTML = '';
-        document.getElementById('clientSearchInput').value = '';
-        
-        showNotification(`Cliente ${this.selectedClient.nombre} seleccionado`, 'success');
+    // Exponer la instancia para handlers inline (si los usas)
+    window.negociacion = this;
+  }
+
+  destroy() {
+    this.container.innerHTML = '';
+    // (Si necesitas, podrías desregistrar eventos aquí)
+  }
+
+  // ============ DATA ============
+  async _cargarDatos() {
+    // 1) CLIENTES desde ENTRADAS
+    const entradas = await excelApi.getEntradas();
+    // entradas: [{fecha, cliente, dni, deudaOriginal, deudaFinal, estado}]
+
+    const porDni = new Map();
+    for (const e of entradas) {
+      const dni = this._norm(e?.dni);
+      if (!dni) continue;
+
+      const { nombre, apellidos } = this._splitNombreApellidos(e?.cliente);
+      const prev = porDni.get(dni) || { nombre: '', apellidos: '' };
+
+      porDni.set(dni, {
+        dni,
+        nombre: nombre || prev.nombre,
+        apellidos: apellidos || prev.apellidos
+      });
     }
 
-    async cargarDeudasCliente() {
-        if (!this.selectedClient) return;
-        
-        try {
-            const response = await excelApi.makeRequest(
-                `/me/drive/items/${excelApi.fileId}/workbook/worksheets('Deudas')/usedRange`
-            );
-            
-            if (response && response.values) {
-                const headers = response.values[0];
-                const rows = response.values.slice(1);
-                
-                // Filtrar deudas del cliente actual
-                this.debtsData = rows
-                    .filter(row => row[headers.indexOf('DNI')] === this.selectedClient.dni)
-                    .map(row => ({
-                        entidad: row[headers.indexOf('Entidad')] || '',
-                        entidadOriginal: row[headers.indexOf('Entidad Original')] || '',
-                        producto: row[headers.indexOf('Producto')] || '',
-                        numeroCredito: row[headers.indexOf('Nº Crédito')] || '',
-                        estado: row[headers.indexOf('Estado')] || 'Activa',
-                        importe: parseFloat(row[headers.indexOf('Importe')] || 0)
-                    }));
-                
-                this.actualizarTablaDeudas();
-            }
-        } catch (error) {
-            console.error('Error cargando deudas:', error);
-            this.debtsData = [];
-        }
-    }
+    this.clientes = Array.from(porDni.values())
+      .sort((a, b) => a.apellidos.localeCompare(b.apellidos, 'es') || a.nombre.localeCompare(b.nombre, 'es'));
 
-    async cargarMovimientosCliente() {
-        if (!this.selectedClient) return;
-        
-        try {
-            const response = await excelApi.makeRequest(
-                `/me/drive/items/${excelApi.fileId}/workbook/worksheets('Ahorros')/usedRange`
-            );
-            
-            if (response && response.values) {
-                const headers = response.values[0];
-                const rows = response.values.slice(1);
-                
-                // Filtrar movimientos del cliente actual
-                this.movementsData = rows
-                    .filter(row => row[headers.indexOf('DNI')] === this.selectedClient.dni)
-                    .map(row => ({
-                        fecha: row[headers.indexOf('Fecha')] || '',
-                        clase: row[headers.indexOf('Clase')] || '',
-                        aportaciones: parseFloat(row[headers.indexOf('Aportaciones')] || 0),
-                        comisionMensual: parseFloat(row[headers.indexOf('Comisión Mensual')] || 0),
-                        liquidacion: parseFloat(row[headers.indexOf('Liquidación')] || 0),
-                        provisiones: parseFloat(row[headers.indexOf('Provisiones')] || 0),
-                        comisionExito: parseFloat(row[headers.indexOf('Comisión De Éxito')] || 0),
-                        costeDevolucion: parseFloat(row[headers.indexOf('Coste Devolución')] || 0)
-                    }));
-                
-                this.calcularAhorros();
-                this.actualizarTablaMovimientos();
-            }
-        } catch (error) {
-            console.error('Error cargando movimientos:', error);
-            this.movementsData = [];
-        }
-    }
+    // 2) DEUDAS desde PLANES
+    const planes = await excelApi.getPlanes();
+    // planes: [{ referencia, fecha, estado, deudas:[{ contrato, producto, entidad, antiguedad, importeOriginal, descuento, importeFinal }] }]
+    const tmp = [];
 
-    calcularAhorros() {
-        let totalAportaciones = 0;
-        let totalComisionMensual = 0;
-        let totalLiquidacion = 0;
-        let totalProvisiones = 0;
-        let totalComisionExito = 0;
-        let totalCosteDevolucion = 0;
-        
-        this.movementsData.forEach(mov => {
-            totalAportaciones += mov.aportaciones || 0;
-            totalComisionMensual += mov.comisionMensual || 0;
-            totalLiquidacion += mov.liquidacion || 0;
-            totalProvisiones += mov.provisiones || 0;
-            totalComisionExito += mov.comisionExito || 0;
-            totalCosteDevolucion += mov.costeDevolucion || 0;
+    for (const p of planes) {
+      const estadoPlan = this._norm(p?.estado);
+      for (const d of (p?.deudas || [])) {
+        tmp.push({
+          entidad: this._norm(d?.entidad),
+          producto: this._norm(d?.producto),
+          numeroCredito: this._norm(d?.contrato),              // Nº Crédito ← Contrato
+          importeDeuda: Number(d?.importeOriginal || 0),       // Importe Deuda ← ImporteOriginal
+          estado: estadoPlan
         });
-        
-        this.savingsData.ahorroReal = totalAportaciones - totalComisionMensual - 
-            totalLiquidacion - totalComisionExito - totalCosteDevolucion;
-        this.savingsData.ahorroDisponible = this.savingsData.ahorroReal - totalProvisiones;
-        
-        // Actualizar UI
-        document.getElementById('ahorroReal').textContent = this.formatCurrency(this.savingsData.ahorroReal);
-        document.getElementById('ahorroDisponible').textContent = this.formatCurrency(this.savingsData.ahorroDisponible);
+      }
     }
 
-    actualizarTablaDeudas() {
-        const tbody = document.getElementById('debtsTableBody');
-        tbody.innerHTML = this.debtsData.map((debt, index) => `
-            <tr>
-                <td><input type="text" value="${debt.entidad}" onchange="window.negociacion.updateDebt(${index}, 'entidad', this.value)" class="table-input"></td>
-                <td><input type="text" value="${debt.entidadOriginal}" onchange="window.negociacion.updateDebt(${index}, 'entidadOriginal', this.value)" class="table-input"></td>
-                <td><input type="text" value="${debt.producto}" onchange="window.negociacion.updateDebt(${index}, 'producto', this.value)" class="table-input"></td>
-                <td><input type="text" value="${debt.numeroCredito}" onchange="window.negociacion.updateDebt(${index}, 'numeroCredito', this.value)" class="table-input"></td>
-                <td>
-                    <select onchange="window.negociacion.updateDebt(${index}, 'estado', this.value)" class="table-input">
-                        <option value="Activa" ${debt.estado === 'Activa' ? 'selected' : ''}>Activa</option>
-                        <option value="Pendiente" ${debt.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
-                        <option value="Cancelada" ${debt.estado === 'Cancelada' ? 'selected' : ''}>Cancelada</option>
-                    </select>
-                </td>
-                <td><input type="number" value="${debt.importe}" onchange="window.negociacion.updateDebt(${index}, 'importe', parseFloat(this.value))" class="table-input"></td>
-                <td>
-                    <button onclick="window.negociacion.eliminarDeuda(${index})" class="btn btn-danger btn-small">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+    // Opcional: colapsar duplicados por Nº Crédito + Entidad + Producto
+    const seen = new Map();
+    for (const r of tmp) {
+      const key = `${r.numeroCredito}||${r.entidad}||${r.producto}`;
+      if (!seen.has(key)) seen.set(key, r);
     }
+    this.deudas = Array.from(seen.values());
+  }
 
-    actualizarTablaMovimientos() {
-        const tbody = document.getElementById('movementsTableBody');
-        tbody.innerHTML = this.movementsData.map((mov, index) => `
-            <tr>
-                <td><input type="date" value="${this.formatDateForInput(mov.fecha)}" onchange="window.negociacion.updateMovement(${index}, 'fecha', this.value)" class="table-input"></td>
-                <td>
-                    <select onchange="window.negociacion.updateMovement(${index}, 'clase', this.value)" class="table-input">
-                        <option value="Cuota" ${mov.clase === 'Cuota' ? 'selected' : ''}>Cuota</option>
-                        <option value="Aportación Extra" ${mov.clase === 'Aportación Extra' ? 'selected' : ''}>Aportación Extra</option>
-                        <option value="Liquidación" ${mov.clase === 'Liquidación' ? 'selected' : ''}>Liquidación</option>
-                        <option value="Provisión" ${mov.clase === 'Provisión' ? 'selected' : ''}>Provisión</option>
-                    </select>
-                </td>
-                <td><input type="number" value="${mov.aportaciones}" onchange="window.negociacion.updateMovement(${index}, 'aportaciones', parseFloat(this.value))" class="table-input text-green"></td>
-                <td><input type="number" value="${mov.comisionMensual}" onchange="window.negociacion.updateMovement(${index}, 'comisionMensual', parseFloat(this.value))"
-class="table-input text-red"></td>
-               <td><input type="number" value="${mov.liquidacion}" onchange="window.negociacion.updateMovement(${index}, 'liquidacion', parseFloat(this.value))" class="table-input text-blue"></td>
-               <td><input type="number" value="${mov.provisiones}" onchange="window.negociacion.updateMovement(${index}, 'provisiones', parseFloat(this.value))" class="table-input text-orange"></td>
-               <td><input type="number" value="${mov.comisionExito}" onchange="window.negociacion.updateMovement(${index}, 'comisionExito', parseFloat(this.value))" class="table-input text-purple"></td>
-               <td><input type="number" value="${mov.costeDevolucion}" onchange="window.negociacion.updateMovement(${index}, 'costeDevolucion', parseFloat(this.value))" class="table-input text-red"></td>
-               <td>
-                   <button onclick="window.negociacion.eliminarMovimiento(${index})" class="btn btn-danger btn-small">
-                       <i class="fas fa-trash"></i>
-                   </button>
-               </td>
-           </tr>
-       `).join('');
-   }
+  // ============ RENDER HELPERS ============
+  _pintarClientes(rows) {
+    const tbody = this.container.querySelector('#tablaClientes tbody');
+    const count = this.container.querySelector('#countClientes');
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${this._esc(r.nombre)}</td>
+        <td>${this._esc(r.apellidos)}</td>
+        <td>${this._esc(r.dni)}</td>
+      </tr>
+    `).join('');
+    if (count) count.textContent = String(rows.length);
+  }
 
-   nuevoCliente() {
-       this.currentClientIndex = -1;
-       this.selectedClient = null;
-       this.debtsData = [];
-       this.movementsData = [];
-       
-       // Limpiar formulario
-       document.getElementById('nombre').value = '';
-       document.getElementById('apellidos').value = '';
-       document.getElementById('dni').value = '';
-       document.getElementById('direccion').value = '';
-       document.getElementById('telefono').value = '';
-       document.getElementById('correo').value = '';
-       
-       // Limpiar tablas
-       document.getElementById('debtsTableBody').innerHTML = '';
-       document.getElementById('movementsTableBody').innerHTML = '';
-       
-       // Resetear ahorros
-       this.savingsData = { ahorroReal: 0, ahorroDisponible: 0 };
-       document.getElementById('ahorroReal').textContent = '€0.00';
-       document.getElementById('ahorroDisponible').textContent = '€0.00';
-       
-       showNotification('Formulario listo para nuevo cliente', 'info');
-   }
+  _pintarDeudas(rows) {
+    const tbody = this.container.querySelector('#tablaDeudas tbody');
+    const count = this.container.querySelector('#countDeudas');
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${this._esc(r.entidad)}</td>
+        <td>${this._esc(r.producto)}</td>
+        <td>${this._esc(r.numeroCredito)}</td>
+        <td class="neg-right">${this._formatEUR(r.importeDeuda)}</td>
+        <td>${this._esc(r.estado)}</td>
+      </tr>
+    `).join('');
+    if (count) count.textContent = String(rows.length);
+  }
 
-   async guardarCliente() {
-       const clientData = {
-           nombre: document.getElementById('nombre').value,
-           apellidos: document.getElementById('apellidos').value,
-           dni: document.getElementById('dni').value,
-           direccion: document.getElementById('direccion').value,
-           telefono: document.getElementById('telefono').value,
-           correo: document.getElementById('correo').value
-       };
-       
-       // Validar campos requeridos
-       if (!clientData.nombre || !clientData.dni) {
-           showNotification('Nombre y DNI son campos obligatorios', 'error');
-           return;
-       }
-       
-       if (this.currentClientIndex === -1) {
-           // Nuevo cliente
-           this.allClientsData.push(clientData);
-           this.currentClientIndex = this.allClientsData.length - 1;
-       } else {
-           // Actualizar cliente existente
-           this.allClientsData[this.currentClientIndex] = clientData;
-       }
-       
-       this.selectedClient = clientData;
-       showNotification('Cliente guardado localmente. Use "Guardar Cambios" para sincronizar', 'success');
-   }
+  // ============ EVENTS / FILTROS ============
+  _bindEvents() {
+    if (this._listenersBound) return;
+    this._listenersBound = true;
 
-   async guardarCambios() {
-       try {
-           showNotification('Guardando cambios en Excel...', 'info');
-           
-           // Guardar clientes
-           await this.guardarClientesEnExcel();
-           
-           // Guardar deudas
-           await this.guardarDeudasEnExcel();
-           
-           // Guardar movimientos
-           await this.guardarMovimientosEnExcel();
-           
-           showNotification('Todos los cambios guardados correctamente', 'success');
-       } catch (error) {
-           console.error('Error guardando cambios:', error);
-           showNotification('Error al guardar cambios', 'error');
-       }
-   }
+    const iCli = this.container.querySelector('#filtroClientes');
+    const iDeu = this.container.querySelector('#filtroDeudas');
+    const btnReload = this.container.querySelector('#btnNegRecargar');
 
-   async guardarClientesEnExcel() {
-       const headers = ['Nombre', 'Apellidos', 'DNI', 'Direccion', 'Telefono', 'Correo'];
-       const values = [headers];
-       
-       this.allClientsData.forEach(client => {
-           values.push([
-               client.nombre || '',
-               client.apellidos || '',
-               client.dni || '',
-               client.direccion || '',
-               client.telefono || '',
-               client.correo || ''
-           ]);
-       });
-       
-       await excelApi.writeSheet('Clientes', `A1:F${values.length}`, values);
-   }
+    iCli?.addEventListener('input', () => {
+      const q = this._norm(iCli.value).toLowerCase();
+      const filtered = !q ? this.clientes : this.clientes.filter(c =>
+        (c.nombre + ' ' + c.apellidos + ' ' + c.dni).toLowerCase().includes(q)
+      );
+      this._pintarClientes(filtered);
+    });
 
-   async guardarDeudasEnExcel() {
-       if (!this.selectedClient) return;
-       
-       // Primero obtener todas las deudas existentes
-       let allDebts = [];
-       try {
-           const response = await excelApi.makeRequest(
-               `/me/drive/items/${excelApi.fileId}/workbook/worksheets('Deudas')/usedRange`
-           );
-           
-           if (response && response.values && response.values.length > 1) {
-               const headers = response.values[0];
-               const rows = response.values.slice(1);
-               
-               // Filtrar deudas que no son del cliente actual
-               allDebts = rows.filter(row => 
-                   row[headers.indexOf('DNI')] !== this.selectedClient.dni
-               );
-           }
-       } catch (error) {
-           console.log('Hoja de deudas no existe, se creará');
-       }
-       
-       // Agregar las deudas del cliente actual
-       const headers = ['DNI', 'Entidad', 'Entidad Original', 'Producto', 'Nº Crédito', 'Estado', 'Importe'];
-       const values = [headers];
-       
-       // Agregar deudas de otros clientes
-       allDebts.forEach(debt => values.push(debt));
-       
-       // Agregar deudas del cliente actual
-       this.debtsData.forEach(debt => {
-           values.push([
-               this.selectedClient.dni,
-               debt.entidad,
-               debt.entidadOriginal,
-               debt.producto,
-               debt.numeroCredito,
-               debt.estado,
-               debt.importe
-           ]);
-       });
-       
-       await excelApi.writeSheet('Deudas', `A1:G${values.length}`, values);
-   }
+    iDeu?.addEventListener('input', () => {
+      const q = this._norm(iDeu.value).toLowerCase();
+      const filtered = !q ? this.deudas : this.deudas.filter(d =>
+        (d.entidad + ' ' + d.producto + ' ' + d.numeroCredito).toLowerCase().includes(q)
+      );
+      this._pintarDeudas(filtered);
+    });
 
-   async guardarMovimientosEnExcel() {
-       if (!this.selectedClient) return;
-       
-       // Primero obtener todos los movimientos existentes
-       let allMovements = [];
-       try {
-           const response = await excelApi.makeRequest(
-               `/me/drive/items/${excelApi.fileId}/workbook/worksheets('Ahorros')/usedRange`
-           );
-           
-           if (response && response.values && response.values.length > 1) {
-               const headers = response.values[0];
-               const rows = response.values.slice(1);
-               
-               // Filtrar movimientos que no son del cliente actual
-               allMovements = rows.filter(row => 
-                   row[headers.indexOf('DNI')] !== this.selectedClient.dni
-               );
-           }
-       } catch (error) {
-           console.log('Hoja de ahorros no existe, se creará');
-       }
-       
-       // Preparar datos para guardar
-       const headers = ['DNI', 'Fecha', 'Clase', 'Aportaciones', 'Comisión Mensual', 
-                       'Liquidación', 'Provisiones', 'Comisión De Éxito', 'Coste Devolución'];
-       const values = [headers];
-       
-       // Agregar movimientos de otros clientes
-       allMovements.forEach(mov => values.push(mov));
-       
-       // Agregar movimientos del cliente actual
-       this.movementsData.forEach(mov => {
-           values.push([
-               this.selectedClient.dni,
-               mov.fecha,
-               mov.clase,
-               mov.aportaciones,
-               mov.comisionMensual,
-               mov.liquidacion,
-               mov.provisiones,
-               mov.comisionExito,
-               mov.costeDevolucion
-           ]);
-       });
-       
-       await excelApi.writeSheet('Ahorros', `A1:I${values.length}`, values);
-   }
+    btnReload?.addEventListener('click', async () => {
+      try {
+        btnReload.disabled = true;
+        await this._cargarDatos();
+        // Resetea filtros
+        if (iCli) iCli.value = '';
+        if (iDeu) iDeu.value = '';
+        this._pintarClientes(this.clientes);
+        this._pintarDeudas(this.deudas);
+        showNotification('Datos recargados', 'success');
+      } catch (e) {
+        console.error('[Negociacion] Recargar error:', e);
+        showNotification('Error al recargar datos', 'error');
+      } finally {
+        btnReload.disabled = false;
+      }
+    });
+  }
 
-   agregarDeuda() {
-       const newDebt = {
-           entidad: '',
-           entidadOriginal: '',
-           producto: '',
-           numeroCredito: '',
-           estado: 'Activa',
-           importe: 0
-       };
-       
-       this.debtsData.push(newDebt);
-       this.actualizarTablaDeudas();
-       showNotification('Nueva deuda agregada', 'success');
-   }
+  // ============ UTILS ============
+  _norm(s) {
+    return String(s ?? '').trim();
+  }
 
-   agregarMovimiento() {
-       const newMovement = {
-           fecha: new Date().toISOString().split('T')[0],
-           clase: 'Cuota',
-           aportaciones: 0,
-           comisionMensual: 0,
-           liquidacion: 0,
-           provisiones: 0,
-           comisionExito: 0,
-           costeDevolucion: 0
-       };
-       
-       this.movementsData.unshift(newMovement);
-       this.actualizarTablaMovimientos();
-       this.calcularAhorros();
-       showNotification('Nuevo movimiento agregado', 'success');
-   }
+  _esc(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
 
-   updateDebt(index, field, value) {
-       if (this.debtsData[index]) {
-           this.debtsData[index][field] = value;
-       }
-   }
+  _formatEUR(n) {
+    const val = Number(n ?? 0);
+    return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-   updateMovement(index, field, value) {
-       if (this.movementsData[index]) {
-           this.movementsData[index][field] = value;
-           this.calcularAhorros();
-       }
-   }
+  _titleCase(s) {
+    return this._norm(s)
+      .toLowerCase()
+      .replace(/\b([\p{L}\p{M}]+)/gu, m => m.charAt(0).toUpperCase() + m.slice(1));
+  }
 
-   eliminarDeuda(index) {
-       if (confirm('¿Está seguro de eliminar esta deuda?')) {
-           this.debtsData.splice(index, 1);
-           this.actualizarTablaDeudas();
-           showNotification('Deuda eliminada', 'success');
-       }
-   }
+  _splitNombreApellidos(cliente) {
+    const txt = this._norm(cliente);
+    if (!txt) return { nombre: '', apellidos: '' };
+    const parts = txt.split(/\s+/);
+    if (parts.length === 1) return { nombre: this._titleCase(parts[0]), apellidos: '' };
+    // Heurística simple: primer token → nombre; resto → apellidos.
+    // Si quieres soportar nombres compuestos (p.ej. "Juan Carlos"), avísame y lo ajusto.
+    const nombre = this._titleCase(parts[0]);
+    const apellidos = this._titleCase(parts.slice(1).join(' '));
+    return { nombre, apellidos };
+  }
 
-   eliminarMovimiento(index) {
-       if (confirm('¿Está seguro de eliminar este movimiento?')) {
-           this.movementsData.splice(index, 1);
-           this.actualizarTablaMovimientos();
-           this.calcularAhorros();
-           showNotification('Movimiento eliminado', 'success');
-       }
-   }
-
-   formatCurrency(amount) {
-       return new Intl.NumberFormat('es-ES', {
-           style: 'currency',
-           currency: 'EUR'
-       }).format(amount);
-   }
-
-   formatDateForInput(dateString) {
-       if (!dateString) return '';
-       const date = new Date(dateString);
-       return date.toISOString().split('T')[0];
-   }
-
-   addStyles() {
-       const style = document.createElement('style');
-       style.textContent = `
-           .negociacion-container {
-               padding: 20px;
-               max-width: 1400px;
-               margin: 0 auto;
-           }
-           
-           .toolbar-negociacion {
-               display: flex;
-               justify-content: space-between;
-               margin-bottom: 20px;
-               padding: 15px;
-               background: white;
-               border-radius: 8px;
-               box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-           }
-           
-           .toolbar-left, .toolbar-right {
-               display: flex;
-               gap: 10px;
-           }
-           
-           .section-card {
-               background: white;
-               border-radius: 8px;
-               box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-               margin-bottom: 20px;
-               overflow: hidden;
-           }
-           
-           .section-header {
-               padding: 15px 20px;
-               color: white;
-               display: flex;
-               justify-content: space-between;
-               align-items: center;
-           }
-           
-           .section-header h2 {
-               margin: 0;
-               font-size: 1.2rem;
-               display: flex;
-               align-items: center;
-               gap: 10px;
-           }
-           
-           .section-body {
-               padding: 20px;
-           }
-           
-           .bg-blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-           .bg-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-           .bg-red { background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%); }
-           .bg-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-           
-           .form-grid {
-               display: grid;
-               grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-               gap: 15px;
-           }
-           
-           .form-group label {
-               display: block;
-               margin-bottom: 5px;
-               font-weight: 500;
-               color: #333;
-           }
-           
-           .form-control {
-               width: 100%;
-               padding: 8px 12px;
-               border: 1px solid #ddd;
-               border-radius: 4px;
-               font-size: 14px;
-           }
-           
-           .form-control:focus {
-               outline: none;
-               border-color: #667eea;
-               box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-           }
-           
-           .input-error {
-               border-color: #ee0979 !important;
-           }
-           
-           .search-container {
-               display: flex;
-               gap: 10px;
-               margin-bottom: 20px;
-           }
-           
-           .search-input {
-               flex: 1;
-               padding: 10px;
-               border: 1px solid #ddd;
-               border-radius: 4px;
-           }
-           
-           .search-results {
-               max-height: 300px;
-               overflow-y: auto;
-           }
-           
-           .search-result-item {
-               padding: 15px;
-               border: 1px solid #e5e7eb;
-               border-radius: 4px;
-               margin-bottom: 10px;
-               cursor: pointer;
-               transition: all 0.2s;
-           }
-           
-           .search-result-item:hover {
-               background: #f9fafb;
-               border-color: #667eea;
-           }
-           
-           .search-result-item h4 {
-               margin: 0 0 5px 0;
-               color: #111827;
-           }
-           
-           .search-result-item p {
-               margin: 0;
-               color: #6b7280;
-               font-size: 14px;
-           }
-           
-           .data-table {
-               width: 100%;
-               border-collapse: collapse;
-           }
-           
-           .data-table th {
-               background: #f9fafb;
-               padding: 12px;
-               text-align: left;
-               font-weight: 600;
-               color: #374151;
-               border-bottom: 2px solid #e5e7eb;
-           }
-           
-           .data-table td {
-               padding: 8px 12px;
-               border-bottom: 1px solid #e5e7eb;
-           }
-           
-           .table-input {
-               width: 100%;
-               padding: 4px 8px;
-               border: 1px solid transparent;
-               background: transparent;
-               border-radius: 4px;
-           }
-           
-           .table-input:focus {
-               border-color: #667eea;
-               background: white;
-               outline: none;
-           }
-           
-           .table-responsive {
-               overflow-x: auto;
-           }
-           
-           .savings-summary {
-               display: grid;
-               grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-               gap: 20px;
-               margin-bottom: 30px;
-           }
-           
-           .savings-card {
-               padding: 20px;
-               border-radius: 8px;
-               color: white;
-               display: flex;
-               justify-content: space-between;
-               align-items: center;
-           }
-           
-           .gradient-green {
-               background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-           }
-           
-           .gradient-blue {
-               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-           }
-           
-           .savings-info {
-               flex: 1;
-           }
-           
-           .savings-label {
-               margin: 0 0 5px 0;
-               font-size: 14px;
-               opacity: 0.9;
-           }
-           
-           .savings-value {
-               margin: 0;
-               font-size: 24px;
-               font-weight: bold;
-           }
-           
-           .savings-icon {
-               font-size: 32px;
-               opacity: 0.8;
-           }
-           
-           .subsection-title {
-               margin: 20px 0 15px 0;
-               font-size: 1.1rem;
-               color: #374151;
-               display: flex;
-               align-items: center;
-               gap: 10px;
-           }
-           
-           .btn {
-               padding: 8px 16px;
-               border: none;
-               border-radius: 4px;
-               cursor: pointer;
-               font-size: 14px;
-               display: inline-flex;
-               align-items: center;
-               gap: 8px;
-               transition: all 0.2s;
-           }
-           
-           .btn-primario {
-               background: #667eea;
-               color: white;
-           }
-           
-           .btn-primario:hover {
-               background: #5a67d8;
-           }
-           
-           .btn-success {
-               background: #10b981;
-               color: white;
-           }
-           
-           .btn-success:hover {
-               background: #059669;
-           }
-           
-           .btn-secundario {
-               background: #6b7280;
-               color: white;
-           }
-           
-           .btn-secundario:hover {
-               background: #4b5563;
-           }
-           
-           .btn-danger {
-               background: #ef4444;
-               color: white;
-           }
-           
-           .btn-danger:hover {
-               background: #dc2626;
-           }
-           
-           .btn-light {
-               background: rgba(255, 255, 255, 0.2);
-               color: white;
-               border: 1px solid rgba(255, 255, 255, 0.3);
-           }
-           
-           .btn-light:hover {
-               background: rgba(255, 255, 255, 0.3);
-           }
-           
-           .btn-small {
-               padding: 4px 8px;
-               font-size: 12px;
-           }
-           
-           .text-green { color: #10b981; }
-           .text-red { color: #ef4444; }
-           .text-blue { color: #3b82f6; }
-           .text-orange { color: #f97316; }
-           .text-purple { color: #8b5cf6; }
-           
-           .no-results {
-               text-align: center;
-               color: #6b7280;
-               padding: 20px;
-           }
-       `;
-       document.head.appendChild(style);
-       
-       // Hacer disponible globalmente para eventos inline
-       window.negociacion = this;
-   }
+  _injectStyles() {
+    if (this._stylesInjected) return;
+    this._stylesInjected = true;
+    const css = `
+      .neg-wrap { padding: 16px; }
+      .neg-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px; }
+      .neg-actions .btn { padding:8px 12px; border-radius:10px; border:1px solid var(--border, #333); background:var(--btn-bg, #1f1f1f); color: var(--fg, #eaeaea); cursor:pointer; }
+      .neg-actions .btn:hover { filter: brightness(1.08); }
+      .neg-grid { display:grid; grid-template-columns: 1fr 1.4fr; gap:16px; }
+      .neg-card { background: var(--card-bg, rgba(255,255,255,0.04)); border:1px solid var(--border, #2a2a2a); border-radius: 14px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+      .neg-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+      .neg-right { display:flex; align-items:center; gap:10px; }
+      .neg-pill { background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 999px; font-weight:600; border: 1px solid var(--border, #2a2a2a); }
+      .neg-table-wrap { max-height: 58vh; overflow:auto; border:1px solid var(--border, #2a2a2a); border-radius: 10px; }
+      .neg-table { width:100%; border-collapse: collapse; font-size: 14px; }
+      .neg-table thead th { position: sticky; top:0; background: var(--thead-bg, #111); text-align:left; padding: 10px; border-bottom:1px solid var(--border, #2a2a2a); z-index:1; }
+      .neg-table tbody td { padding: 10px; border-bottom:1px solid var(--border, #2a2a2a); }
+      .neg-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+      .neg-input { padding: 7px 10px; border: 1px solid var(--border, #2a2a2a); border-radius: 10px; background: var(--input-bg, #0f0f0f); color: var(--fg, #eaeaea); width: 52%; }
+      .neg-right { text-align: right; }
+      @media (max-width: 1100px) {
+        .neg-grid { grid-template-columns: 1fr; }
+        .neg-input { width: 60%; }
+      }
+    `;
+    const style = document.createElement('style');
+    style.id = 'negociacion-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
 }
+
+// Export por defecto también
+export default Negociacion;
