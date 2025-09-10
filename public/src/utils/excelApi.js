@@ -1,3 +1,4 @@
+// utils/excelApi.js
 import { config } from '../config/config.js';
 import { authService } from './auth.js';
 
@@ -6,23 +7,33 @@ class ExcelApiService {
     this.baseUrl = config.graph.baseUrl;
     this.fileId = config.graph.excelFileId;
     this.sheets = config.graph.sheets;
+
     // Nota: Asegúrate de que las claves en config.graph.tables estén en minúsculas
     this.tables = config.graph.tables || { planes: 'TablePlanes', entradas: 'TableEntradas' }; // Claves en minúsculas
-    this.sessionId = null; // Almacenar el ID de la sesión persistente
+
+    // Añadir tabla de usuarios si existe en config
+    if (config.graph.tables && config.graph.tables.usuarios) {
+      this.tables.usuarios = config.graph.tables.usuarios;
+    }
+
+    this.sessionId = null; // ID de la sesión persistente
   }
 
   // Crear una sesión persistente
   async createSession() {
     try {
       const token = await authService.getToken();
-      const response = await fetch(`${this.baseUrl}/me/drive/items/${this.fileId}/workbook/createSession`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ persistChanges: true })
-      });
+      const response = await fetch(
+        `${this.baseUrl}/me/drive/items/${this.fileId}/workbook/createSession`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ persistChanges: true })
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to create session: ${response.status} ${response.statusText}`);
@@ -44,7 +55,7 @@ class ExcelApiService {
 
   async makeRequest(endpoint, method = 'GET', body = null) {
     try {
-      // Asegurarse de que existe una sesión activa
+      // Asegurar sesión activa
       if (!this.sessionId) {
         await this.createSession();
       }
@@ -53,9 +64,9 @@ class ExcelApiService {
       const options = {
         method,
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'workbook-session-id': this.sessionId // Incluir el ID de la sesión
+          'workbook-session-id': this.sessionId
         }
       };
 
@@ -63,15 +74,16 @@ class ExcelApiService {
         options.body = JSON.stringify(body);
       }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, options);
+      const url = `${this.baseUrl}${endpoint}`;
+      const response = await fetch(url, options);
 
       if (!response.ok) {
-        // Si la sesión expira (401 o 403), intentar crear una nueva
+        // Reintentar si la sesión expiró
         if (response.status === 401 || response.status === 403) {
-          this.sessionId = null; // Resetear sesión
+          this.sessionId = null;
           await this.createSession();
           options.headers['workbook-session-id'] = this.sessionId;
-          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, options);
+          const retryResponse = await fetch(url, options);
           if (!retryResponse.ok) {
             throw new Error(`Graph API error: ${retryResponse.status} ${retryResponse.statusText}`);
           }
@@ -83,15 +95,12 @@ class ExcelApiService {
       return await response.json();
     } catch (error) {
       console.error('Excel API request error:', error);
-      // Nota: Las funciones consumidoras deben manejar este error para mostrar mensajes amigables en la UI
       throw error;
     }
   }
 
-  // Leer datos de una hoja
+  // Leer datos de una hoja (usedRange)
   async readSheet(sheetName) {
-    // Nota: El parámetro 'range' fue eliminado porque no se usa actualmente.
-    // Puede reincorporarse si se necesita especificar un rango específico en el futuro.
     const escapedSheetName = this.escapeSheetName(sheetName);
     const endpoint = `/me/drive/items/${this.fileId}/workbook/worksheets('${escapedSheetName}')/usedRange`;
     return await this.makeRequest(endpoint);
@@ -105,17 +114,17 @@ class ExcelApiService {
     return await this.makeRequest(endpoint, 'PATCH', body);
   }
 
-  // Agregar nueva fila (o múltiples filas)
+  // Agregar nueva fila (o múltiples filas) a una tabla
   async appendRow(sheetName, values) {
-    // Nota: No se codifica sheetName porque el endpoint usa el nombre de la tabla.
-    // Puede añadirse escapeSheetName si se desea escribir directamente en la hoja en el futuro.
-    const tableName = this.tables[sheetName.toLowerCase()] || 'Table1'; // Búsqueda en minúsculas
+    // sheetName aquí se usa como clave para this.tables (en minúsculas)
+    const tableName = this.tables[sheetName.toLowerCase()] || 'Table1';
     const endpoint = `/me/drive/items/${this.fileId}/workbook/tables('${tableName}')/rows`;
-    const body = { values: Array.isArray(values[0]) ? values : [values] }; // Soporta una o varias filas
+    const body = { values: Array.isArray(values[0]) ? values : [values] };
     return await this.makeRequest(endpoint, 'POST', body);
   }
 
-  // Obtener todos los planes
+  // ======== PLANES ========
+
   async getPlanes() {
     try {
       const result = await this.readSheet(this.sheets.planes);
@@ -124,7 +133,6 @@ class ExcelApiService {
       const headers = result.values[0];
       const rows = result.values.slice(1);
 
-      // Mapear índices de columnas dinámicamente
       const columnMap = {
         referencia: headers.indexOf('Referencia'),
         contrato: headers.indexOf('Contrato'),
@@ -138,12 +146,10 @@ class ExcelApiService {
         estado: headers.indexOf('Estado')
       };
 
-      // Validar que todas las columnas necesarias existen
       if (Object.values(columnMap).includes(-1)) {
         throw new Error('Missing required columns in Planes sheet');
       }
 
-      // Agrupar por referencia
       const planesMap = new Map();
 
       rows.forEach(row => {
@@ -175,12 +181,10 @@ class ExcelApiService {
       return Array.from(planesMap.values());
     } catch (error) {
       console.error('Error reading planes:', error);
-      // Nota: Las funciones consumidoras deben manejar este error para mostrar mensajes amigables en la UI
       throw error;
     }
   }
 
-  // Guardar plan
   async savePlan(plan) {
     try {
       const values = plan.deudas.map(deuda => [
@@ -196,17 +200,16 @@ class ExcelApiService {
         plan.estado || 'plan_creado'
       ]);
 
-      // Enviar todas las filas en una sola llamada
-      await this.appendRow(this.sheets.planes, values);
+      await this.appendRow(this.sheets.planes, values); // 'Planes' → tables['planes']
       return true;
     } catch (error) {
       console.error('Error saving plan:', error);
-      // Nota: Las funciones consumidoras deben manejar este error para mostrar mensajes amigables en la UI
       throw error;
     }
   }
 
-  // Obtener entradas
+  // ======== ENTRADAS ========
+
   async getEntradas() {
     try {
       const result = await this.readSheet(this.sheets.entradas);
@@ -215,7 +218,6 @@ class ExcelApiService {
       const headers = result.values[0];
       const rows = result.values.slice(1);
 
-      // Mapear índices de columnas dinámicamente
       const columnMap = {
         fecha: headers.indexOf('Fecha'),
         cliente: headers.indexOf('Cliente'),
@@ -225,7 +227,6 @@ class ExcelApiService {
         estado: headers.indexOf('Estado')
       };
 
-      // Validar que todas las columnas necesarias existen
       if (Object.values(columnMap).includes(-1)) {
         throw new Error('Missing required columns in Entradas sheet');
       }
@@ -240,12 +241,10 @@ class ExcelApiService {
       }));
     } catch (error) {
       console.error('Error reading entradas:', error);
-      // Nota: Las funciones consumidoras deben manejar este error para mostrar mensajes amigables en la UI
       throw error;
     }
   }
 
-  // Guardar entrada
   async saveEntrada(entrada) {
     try {
       const values = [
@@ -257,12 +256,68 @@ class ExcelApiService {
         entrada.estado
       ];
 
-      await this.appendRow(this.sheets.entradas, values);
+      await this.appendRow(this.sheets.entradas, values); // 'Entradas' → tables['entradas']
       return true;
     } catch (error) {
       console.error('Error saving entrada:', error);
-      // Nota: Las funciones consumidoras deben manejar este error para mostrar mensajes amigables en la UI
       throw error;
+    }
+  }
+
+  // ======== USUARIOS ========
+
+  /**
+   * Lee Usuarios desde:
+   *  - Tabla (preferida) si existe `config.graph.tables.usuarios` (e.g., 'TableUsuarios')
+   *  - Hoja 'Usuarios' (usedRange) como fallback
+   * Requiere encabezados: Nombre | (Email|Correo|user_upn|UPN) | Perfil
+   */
+  async getUsuarios() {
+    try {
+      let result;
+
+      if (this.tables.usuarios) {
+        // Leer TODA la tabla incluyendo headers
+        const tableName = this.tables.usuarios;
+        const endpoint = `/me/drive/items/${this.fileId}/workbook/tables('${tableName}')/range`;
+        result = await this.makeRequest(endpoint);
+      } else {
+        // Fallback por hoja
+        const sheetName = this.sheets.usuarios || 'Usuarios';
+        const escaped = this.escapeSheetName(sheetName);
+        const endpoint = `/me/drive/items/${this.fileId}/workbook/worksheets('${escaped}')/usedRange`;
+        result = await this.makeRequest(endpoint);
+      }
+
+      const values = result?.values || [];
+      if (!values.length || values.length < 2) return [];
+
+      const headers = values[0].map(h => String(h || '').trim());
+      const rows = values.slice(1);
+
+      // Helper: indexOf case-insensitive
+      const idx = (nameOptions) => {
+        const arr = Array.isArray(nameOptions) ? nameOptions : [nameOptions];
+        return arr.reduce((found, name) => {
+          if (found !== -1) return found;
+          const i = headers.findIndex(h => h.toLowerCase() === String(name).toLowerCase());
+          return i !== -1 ? i : -1;
+        }, -1);
+      };
+
+      const colNombre = idx('Nombre');
+      const colPerfil = idx('Perfil');
+      const colEmail = idx(['Email', 'Correo', 'user_upn', 'UPN', 'Correo Corporativo']);
+
+      return rows.map(r => ({
+        nombre: colNombre !== -1 ? (r[colNombre] || '') : '',
+        email:  colEmail  !== -1 ? (r[colEmail]  || '') : '',
+        perfil: colPerfil !== -1 ? (r[colPerfil] || 'Gestion') : 'Gestion'
+      }));
+    } catch (error) {
+      console.error('Error reading usuarios:', error);
+      // Si no existe la hoja/tabla o hay error, devolver array vacío
+      return [];
     }
   }
 }
