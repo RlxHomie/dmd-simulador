@@ -148,77 +148,145 @@ class App {
     this.attachEventListeners();
   }
 
-  // ==== NUEVA LÓGICA DE PERFILES ====
+// ==== NUEVA LÓGICA DE PERFILES ====
 
-  // Modificado: muestra app y decide UI por perfil
-  showApp() {
-    document.getElementById('authRequired').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+function normPerfil(p) {
+  return String(p ?? '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+    .trim().toLowerCase();
+}
 
-    // Info de usuario
-    const account = authService.getAccount();
-    if (account) {
-      document.getElementById('userInfo').textContent = account.name || account.username || '';
-      const perfil = account.perfil || 'Gestion';
+// Modificado: muestra app y decide UI por perfil (robusto)
+showApp() {
+  document.getElementById('authRequired').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
 
-      // Evitar re-render de la misma UI si el perfil no cambió
-      if (this.profileRendered === perfil) {
-        return;
-      }
+  const account = authService.getAccount();
+  if (account) {
+    document.getElementById('userInfo').textContent = account.name || account.username || '';
+    const perfil = account.perfil || 'Gestion';
+    const perfilNorm = normPerfil(perfil);
 
-      if (perfil === 'Negociacion') {
-        this.showNegociacionUI();
-        this.profileRendered = 'Negociacion';
-      } else {
-        this.showGestionUI();
-        this.profileRendered = 'Gestion';
-      }
+    // Evitar re-render de la misma UI si el perfil no cambió
+    if (this.profileRendered && normPerfil(this.profileRendered) === perfilNorm) {
+      return;
+    }
+
+    if (perfilNorm === 'negociacion') {
+      this.showNegociacionUI();
+      this.profileRendered = 'Negociacion';
     } else {
-      // Sin cuenta: UI de gestión por defecto
-      if (this.profileRendered !== 'Gestion') {
-        this.showGestionUI();
-        this.profileRendered = 'Gestion';
-      }
+      this.showGestionUI();
+      this.profileRendered = 'Gestion';
+    }
+  } else {
+    if (this.profileRendered !== 'Gestion') {
+      this.showGestionUI();
+      this.profileRendered = 'Gestion';
     }
   }
+}
 
-  // UI específica para Negociación
-  showNegociacionUI() {
-    // Ocultar tabs de gestión
-    const navTabs = document.querySelector('.nav-tabs');
-    if (navTabs) navTabs.style.display = 'none';
 
-    // Destruir componentes de gestión si estaban creados
-    this.teardownGestionComponents();
+// UI específica para Negociación (con fallbacks y diagnóstico)
+async showNegociacionUI() {
+  // Ocultar tabs de gestión
+  const navTabs = document.querySelector('.nav-tabs');
+  if (navTabs) navTabs.style.display = 'none';
 
-    // Contenedor
-    const container = document.getElementById('contentContainer');
-    container.innerHTML = `
-      <div class="negociacion-header">
-        <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
-          Módulo de Negociación
-        </h1>
-        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-          Gestión integral de clientes, deudas y movimientos financieros
-        </p>
-      </div>
-    `;
+  // Destruir componentes de gestión si estaban creados
+  this.teardownGestionComponents();
 
-    // Cargar e iniciar componente de Negociación
-    if (!this.components.negociacion) {
-      import('./components/negociacion/Negociacion.js')
-        .then(module => {
-          this.components.negociacion = new module.Negociacion(container);
-          this.components.negociacion.render();
-        })
-        .catch(err => {
-          console.error('Error cargando Negociacion:', err);
-          showNotification('No se pudo cargar el módulo de Negociación', 'error');
-        });
-    } else {
-      this.components.negociacion.render();
+  // Contenedor
+  const container = document.getElementById('contentContainer');
+  container.innerHTML = `
+    <div class="negociacion-header">
+      <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
+        Módulo de Negociación
+      </h1>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+        Gestión integral de clientes, deudas y movimientos financieros
+      </p>
+    </div>
+  `;
+
+  // Intentaremos varias rutas por si el fichero no está donde esperamos
+  const candidates = [
+    './components/negociacion/Negociacion.js', // carpeta negociacion/
+    './components/Negociacion.js',             // directamente en components/
+    '../components/negociacion/Negociacion.js' // por si app.js está anidado distinto
+  ];
+
+  // Helper de diagnóstico: comprueba qué devuelve el servidor
+  const probe = async (url) => {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      const ct = res.headers.get('content-type') || '';
+      const text = await res.text();
+      console.log('[Negociacion probe]', { url, status: res.status, contentType: ct, preview: text.slice(0, 120) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      // Si parece HTML o JSON, no es módulo
+      if (/^\s*</.test(text) || /^\s*[{[]/.test(text)) {
+        throw new SyntaxError('Contenido no es JS módulo ES');
+      }
+      // Crea un blob para forzar MIME JS y evitar problemas de content-type
+      const blob = new Blob([text], { type: 'text/javascript' });
+      const objURL = URL.createObjectURL(blob);
+      try {
+        const mod = await import(/* @vite-ignore */ objURL);
+        URL.revokeObjectURL(objURL);
+        return mod;
+      } catch (e) {
+        URL.revokeObjectURL(objURL);
+        throw e;
+      }
+    } catch (e) {
+      console.warn('[Negociacion] Falló import de', url, e);
+      return null;
     }
+  };
+
+  // Prueba rutas hasta que una funcione
+  let mod = null;
+  for (const url of candidates) {
+    // Primer diagnóstico: ¿qué hay realmente en esa URL?
+    const res = await fetch(url, { cache: 'no-store' }).catch(() => null);
+    if (res && res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      const head = await res.clone().text();
+      console.log('[Negociacion fetch]', { url, status: res.status, contentType: ct, preview: head.slice(0, 120) });
+    } else {
+      console.warn('[Negociacion fetch] No accesible:', url, res && res.status);
+    }
+
+    // Luego intenta importarlo de forma segura
+    mod = await probe(url);
+    if (mod) break;
   }
+
+  if (!mod) {
+    showNotification('No se pudo cargar el módulo de Negociación (revisa ruta y contenido del archivo)', 'error');
+    console.error('Todas las rutas fallaron:', candidates);
+    return;
+  }
+
+  // Acepta export nombrado o default
+  const Ctor = mod.Negociacion || mod.default;
+  if (typeof Ctor !== 'function') {
+    showNotification('El módulo de Negociación no exporta una clase válida', 'error');
+    console.error('Exports encontrados:', Object.keys(mod));
+    return;
+  }
+
+  try {
+    this.components.negociacion = new Ctor(container);
+    await this.components.negociacion.render();
+  } catch (err) {
+    console.error('Error iniciando Negociacion:', err);
+    showNotification('No se pudo iniciar Negociación', 'error');
+  }
+}
+
 
   // UI de Gestión (tabs clásicas)
   showGestionUI() {
@@ -480,3 +548,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
+
