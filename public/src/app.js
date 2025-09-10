@@ -1,3 +1,4 @@
+// App.js
 import { authService } from './utils/auth.js';
 import { storageService } from './utils/storage.js';
 import { showNotification, initNotifications } from './utils/notifications.js';
@@ -10,48 +11,40 @@ class App {
     this.currentTab = 'dashboard';
     this.components = {};
     this.statusInterval = null;
+    this.profileRendered = null; // 'Gestion' | 'Negociacion'
   }
-  
+
   async initialize() {
     try {
-      // Show loading screen
       this.showLoading(true);
-      
-      // Initialize notifications
+
+      // Notificaciones
       initNotifications();
-      
-      // Initialize auth
+
+      // Auth y storage
       const account = await authService.initialize();
-      
-      // Initialize storage
       await storageService.initialize();
-      
-      // Create app structure
+
+      // Estructura base
       this.createAppStructure();
-      
-      // Initialize components
-      this.initializeComponents();
-      
-      // Check authentication
+
+      // Mostrar según autenticación
       if (!account) {
         this.showAuthRequired();
       } else {
-        this.showApp();
+        this.showApp(); // aquí se decide Negociación vs Gestión
       }
-      
-      // Hide loading screen
+
       this.showLoading(false);
-      
-      // Start status monitoring
       this.startStatusMonitoring();
-      
+
     } catch (error) {
       console.error('App initialization error:', error);
       showNotification('Error al inicializar la aplicación', 'error');
       this.showLoading(false);
     }
   }
-  
+
   createAppStructure() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -118,7 +111,7 @@ class App {
         </div>
 
         <div class="main-wrapper">
-          <!-- Navigation Tabs -->
+          <!-- Navigation Tabs (Gestión) -->
           <div class="nav-tabs">
             <button class="nav-tab active" data-tab="dashboard">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,54 +143,167 @@ class App {
         </div>
       </div>
     `;
-    
-    // Add event listeners
+
+    // Listeners
     this.attachEventListeners();
   }
-  
+
+  // ==== NUEVA LÓGICA DE PERFILES ====
+
+  // Modificado: muestra app y decide UI por perfil
+  showApp() {
+    document.getElementById('authRequired').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+
+    // Info de usuario
+    const account = authService.getAccount();
+    if (account) {
+      document.getElementById('userInfo').textContent = account.name || account.username || '';
+      const perfil = account.perfil || 'Gestion';
+
+      // Evitar re-render de la misma UI si el perfil no cambió
+      if (this.profileRendered === perfil) {
+        return;
+      }
+
+      if (perfil === 'Negociacion') {
+        this.showNegociacionUI();
+        this.profileRendered = 'Negociacion';
+      } else {
+        this.showGestionUI();
+        this.profileRendered = 'Gestion';
+      }
+    } else {
+      // Sin cuenta: UI de gestión por defecto
+      if (this.profileRendered !== 'Gestion') {
+        this.showGestionUI();
+        this.profileRendered = 'Gestion';
+      }
+    }
+  }
+
+  // UI específica para Negociación
+  showNegociacionUI() {
+    // Ocultar tabs de gestión
+    const navTabs = document.querySelector('.nav-tabs');
+    if (navTabs) navTabs.style.display = 'none';
+
+    // Destruir componentes de gestión si estaban creados
+    this.teardownGestionComponents();
+
+    // Contenedor
+    const container = document.getElementById('contentContainer');
+    container.innerHTML = `
+      <div class="negociacion-header">
+        <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
+          Módulo de Negociación
+        </h1>
+        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+          Gestión integral de clientes, deudas y movimientos financieros
+        </p>
+      </div>
+    `;
+
+    // Cargar e iniciar componente de Negociación
+    if (!this.components.negociacion) {
+      import('./components/negociacion/Negociacion.js')
+        .then(module => {
+          this.components.negociacion = new module.Negociacion(container);
+          this.components.negociacion.render();
+        })
+        .catch(err => {
+          console.error('Error cargando Negociacion:', err);
+          showNotification('No se pudo cargar el módulo de Negociación', 'error');
+        });
+    } else {
+      this.components.negociacion.render();
+    }
+  }
+
+  // UI de Gestión (tabs clásicas)
+  showGestionUI() {
+    // Mostrar tabs
+    const navTabs = document.querySelector('.nav-tabs');
+    if (navTabs) navTabs.style.display = 'flex';
+
+    // Destruir componente negociación si existía
+    if (this.components.negociacion?.destroy) {
+      try { this.components.negociacion.destroy(); } catch (_) {}
+    }
+    this.components.negociacion = null;
+
+    // Inicializar componentes de gestión si no existen
+    this.initializeComponents();
+
+    // Abrir dashboard por defecto
+    this.switchTab('dashboard');
+  }
+
+  // Inicializa componentes de Gestión evitando duplicados
   initializeComponents() {
     const container = document.getElementById('contentContainer');
-    
-    this.components.dashboard = new Dashboard(container);
-    this.components.simulador = new Simulador(container, () => this.refreshDashboard());
-    this.components.seguimiento = new Seguimiento(
-      container,                       // contenedor principal
-      () => this.refreshDashboard(),   // callback onUpdate para KPIGrid y Dashboard
-      (tab, plan) => {                 // onSwitchTab ← nuevo callback
-        this.switchTab(tab).then(() => {
-          if (plan && this.components.simulador?.loadPlan) this.components.simulador.loadPlan(plan);
-        });
-      }
-    );
-    
-    // Make simulador globally accessible for inline handlers
-    window.simulador = this.components.simulador; // Mantener para compatibilidad
+
+    if (!this.components.dashboard) {
+      this.components.dashboard = new Dashboard(container);
+    }
+    if (!this.components.simulador) {
+      this.components.simulador = new Simulador(container, () => this.refreshDashboard());
+    }
+    if (!this.components.seguimiento) {
+      this.components.seguimiento = new Seguimiento(
+        container,
+        () => this.refreshDashboard(),
+        (tab, plan) => {
+          this.switchTab(tab).then(() => {
+            if (plan && this.components.simulador?.loadPlan) {
+              this.components.simulador.loadPlan(plan);
+            }
+          });
+        }
+      );
+    }
+
+    // Accesos globales
+    window.simulador = this.components.simulador;
     window.DMDAsesores = {
       app: this,
       simulador: this.components.simulador
     };
   }
-  
+
+  // Limpia componentes de Gestión (cuando cambiamos a Negociación)
+  teardownGestionComponents() {
+    ['dashboard', 'simulador', 'seguimiento'].forEach(key => {
+      if (this.components[key]?.destroy) {
+        try { this.components[key].destroy(); } catch (_) {}
+      }
+      this.components[key] = null;
+    });
+    // Limpiar contenedor visible
+    const container = document.getElementById('contentContainer');
+    if (container) container.innerHTML = '';
+  }
+
   attachEventListeners() {
-    // Login button
+    // Login
     const btnLogin = document.getElementById('btnLogin');
     if (btnLogin) {
       btnLogin.addEventListener('click', () => this.login());
     }
-    
-    // Logout button
+
+    // Logout
     const btnLogout = document.getElementById('btnLogout');
     if (btnLogout) {
       btnLogout.addEventListener('click', () => this.logout());
     }
-    
-    // Sync button
+
+    // Sync
     const btnSync = document.getElementById('btnSync');
     if (btnSync) {
       btnSync.addEventListener('click', () => this.syncData());
     }
-    
-    // Navigation tabs
+
+    // Tabs Gestión
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
@@ -206,13 +312,12 @@ class App {
       });
     });
   }
-  
+
   async login() {
     try {
       this.showLoading(true);
       await authService.login();
-      
-      // Re-initialize after login
+      // Re-iniciar flujo completo (recalcula perfil y UI)
       await this.initialize();
     } catch (error) {
       console.error('Login error:', error);
@@ -220,150 +325,158 @@ class App {
       this.showLoading(false);
     }
   }
-  
+
   async logout() {
     try {
       await authService.logout();
+      // Limpieza UI/estado
+      this.destroy();
+      // Volver a pantalla de auth
+      this.showAuthRequired();
     } catch (error) {
       console.error('Logout error:', error);
       showNotification('Error al cerrar sesión', 'error');
     }
   }
-  
+
   showLoading(show) {
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) {
       loadingScreen.style.display = show ? 'flex' : 'none';
     }
   }
-  
+
   showAuthRequired() {
-    document.getElementById('authRequired').style.display = 'block';
-    document.getElementById('mainApp').style.display = 'none';
+    const authRequired = document.getElementById('authRequired');
+    const mainApp = document.getElementById('mainApp');
+    if (authRequired) authRequired.style.display = 'block';
+    if (mainApp) mainApp.style.display = 'none';
   }
-  
-  showApp() {
-    document.getElementById('authRequired').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    
-    // Update user info
-    const account = authService.getAccount();
-    if (account) {
-      document.getElementById('userInfo').textContent = account.name || account.username || '';
-    }
-    
-    // Show dashboard by default
-    this.switchTab('dashboard');
-  }
-  
+
   async switchTab(tabName) {
-    // Update active tab
+    // Si estamos en perfil Negociación, ignorar tabs
+    if (this.profileRendered === 'Negociacion') return;
+
+    // Actualiza estado visual de tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
       const isActive = tab.dataset.tab === tabName;
       tab.classList.toggle('active', isActive);
       tab.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
-    
-    // Clear container
-    const container = document.getElementById('contentContainer');
-    container.innerHTML = '';
-    
-    // Render component
-    this.currentTab = tabName;
-    await this.components[tabName].render();
 
-    if (tabName === 'simulador' && this.components.simulador.resetView) {
+    // Render componente
+    const container = document.getElementById('contentContainer');
+    if (container) container.innerHTML = '';
+
+    this.currentTab = tabName;
+
+    const comp = this.components[tabName];
+    if (comp?.render) {
+      await comp.render();
+    }
+
+    if (tabName === 'simulador' && this.components.simulador?.resetView) {
       this.components.simulador.resetView();
     }
-    
-    // Update app reference in global namespace
-    window.DMDAsesores.app = this;
+
+    // Actualiza referencia global
+    if (window.DMDAsesores) {
+      window.DMDAsesores.app = this;
+    }
   }
-  
+
   async refreshDashboard() {
-    if (this.currentTab === 'dashboard' && this.components.dashboard) {
+    if (this.profileRendered === 'Gestion' && this.currentTab === 'dashboard' && this.components.dashboard?.refresh) {
       await this.components.dashboard.refresh();
     }
   }
-  
+
   async syncData() {
     const syncIcon = document.getElementById('syncIcon');
     const btnSync = document.getElementById('btnSync');
-    
-    // Add spinning animation
-    syncIcon.classList.add('spin');
-    btnSync.disabled = true;
-    
+
+    // Animación
+    if (syncIcon) syncIcon.classList.add('spin');
+    if (btnSync) btnSync.disabled = true;
+
     try {
       await storageService.syncPendingData();
-      
-      // Refresh current view
-      if (this.components[this.currentTab]) {
-        if (this.currentTab === 'dashboard') {
-          await this.components[this.currentTab].refresh();
-        } else if (this.currentTab === 'seguimiento') {
-          await this.components[this.currentTab].updateTable();
+
+      // Refrescar vista actual
+      if (this.profileRendered === 'Gestion') {
+        if (this.currentTab === 'dashboard' && this.components.dashboard?.refresh) {
+          await this.components.dashboard.refresh();
+        } else if (this.currentTab === 'seguimiento' && this.components.seguimiento?.updateTable) {
+          await this.components.seguimiento.updateTable();
         }
+      } else if (this.profileRendered === 'Negociacion' && this.components.negociacion?.refresh) {
+        await this.components.negociacion.refresh();
       }
-      
+
       showNotification('Sincronización completada', 'success');
     } catch (error) {
       console.error('Sync error:', error);
       showNotification('Error al sincronizar', 'error');
     } finally {
-      syncIcon.classList.remove('spin');
-      btnSync.disabled = false;
+      if (syncIcon) syncIcon.classList.remove('spin');
+      if (btnSync) btnSync.disabled = false;
     }
   }
-  
+
   startStatusMonitoring() {
     const updateStatus = () => {
-      const status = storageService.getSyncStatus();
+      const status = storageService.getSyncStatus?.() || { isOnline: true, pendingCount: 0 };
       const badge = document.getElementById('statusBadge');
       const text = document.getElementById('statusText');
       const lastUpdate = document.getElementById('lastUpdate');
-      
-      if (status.isOnline) {
-        badge.classList.remove('offline');
-        text.textContent = 'Conectado';
-        
-        if (status.pendingCount > 0) {
-          text.textContent += ` (${status.pendingCount} pendientes)`;
+
+      if (badge && text) {
+        if (status.isOnline) {
+          badge.classList.remove('offline');
+          text.textContent = 'Conectado';
+          if (status.pendingCount > 0) {
+            text.textContent += ` (${status.pendingCount} pendientes)`;
+          }
+        } else {
+          badge.classList.add('offline');
+          text.textContent = 'Modo Offline';
         }
-      } else {
-        badge.classList.add('offline');
-        text.textContent = 'Modo Offline';
       }
-      
-      lastUpdate.textContent = `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+
+      if (lastUpdate) {
+        lastUpdate.textContent = `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+      }
     };
-    
-    // Update immediately
+
     updateStatus();
-    
-    // Update every 10 seconds
     this.statusInterval = setInterval(updateStatus, 10000);
   }
-  
+
   destroy() {
-    if (this.statusInterval) {
-      clearInterval(this.statusInterval);
-    }
-    
-    storageService.destroy();
-    
+    if (this.statusInterval) clearInterval(this.statusInterval);
+    this.statusInterval = null;
+
+    // Destruir storage si aplica
+    try { storageService.destroy?.(); } catch (_) {}
+
+    // Destruir todos los componentes
     Object.values(this.components).forEach(component => {
-      if (component.destroy) component.destroy();
+      try { component?.destroy?.(); } catch (_) {}
     });
+
+    this.components = {};
+    this.currentTab = 'dashboard';
+    this.profileRendered = null;
   }
 }
 
-// Initialize app when DOM is ready
+// Inicializar app
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App();
   app.initialize();
-  
-  // Make app globally accessible
-  window.app = app;
 
+  // Exponer globalmente
+  window.app = app;
 });
+
+export { App };
