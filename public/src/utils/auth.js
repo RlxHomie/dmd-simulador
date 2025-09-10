@@ -162,7 +162,7 @@ class AuthService {
 
     try {
       // Import dinámico para evitar dependencias circulares
-      const { excelApi } = await import('../api/excelApi.js');
+      const { excelApi } = await import('./excelApi.js');
 
       // Se espera: array de objetos (mínimo { email, perfil }), pero soportamos encabezados variables
       const usuarios = await excelApi.getUsuarios();
@@ -294,3 +294,4 @@ class AuthService {
 }
 
 export const authService = new AuthService();
+
