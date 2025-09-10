@@ -27,7 +27,8 @@ export const config = {
     },
     tables: {
       planes: 'TablePlanes',
-      entradas: 'TableEntradas'
+      entradas: 'TableEntradas',
+      usuarios: 'TableUsuarios'
     }
   },
   
@@ -40,4 +41,5 @@ export const config = {
     debug: env.NODE_ENV !== 'production'
   }
 };
+
 
