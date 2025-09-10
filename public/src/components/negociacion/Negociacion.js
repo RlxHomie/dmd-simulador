@@ -1,6 +1,6 @@
 // /components/negociacion/Negociacion.js
-import { excelApi } from '../../excelApi.js';
-import { showNotification } from '../../notifications.js';
++ import { excelApi } from '../../utils/excelApi.js';
++ import { showNotification } from '../../utils/notifications.js';
 
 // Exportamos nombrado y por defecto para evitar problemas con el import dinámico
 export class Negociacion {
@@ -290,3 +290,4 @@ export class Negociacion {
 
 // Export por defecto también
 export default Negociacion;
+
