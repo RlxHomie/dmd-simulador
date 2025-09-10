@@ -189,63 +189,108 @@ class App {
     }
   }
 
-  // UI específica para Negociación (import dinámico con pequeño fallback)
-  async showNegociacionUI() {
-    // Ocultar tabs de gestión
-    const navTabs = document.querySelector('.nav-tabs');
-    if (navTabs) navTabs.style.display = 'none';
+// UI específica para Negociación (con diagnóstico y fallback por Blob)
+async showNegociacionUI() {
+  // Ocultar tabs de gestión
+  const navTabs = document.querySelector('.nav-tabs');
+  if (navTabs) navTabs.style.display = 'none';
 
-    // Destruir componentes de gestión si estaban creados
-    this.teardownGestionComponents();
+  // Destruir componentes de gestión si estaban creados
+  this.teardownGestionComponents();
 
-    // Contenedor
-    const container = document.getElementById('contentContainer');
-    container.innerHTML = `
-      <div class="negociacion-header">
-        <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
-          Módulo de Negociación
-        </h1>
-        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-          Gestión integral de clientes, deudas y movimientos financieros
-        </p>
-      </div>
-    `;
+  // Contenedor
+  const container = document.getElementById('contentContainer');
+  container.innerHTML = `
+    <div class="negociacion-header">
+      <h1 style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">
+        Módulo de Negociación
+      </h1>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+        Gestión integral de clientes, deudas y movimientos financieros
+      </p>
+    </div>
+  `;
 
-    const candidates = [
-      './components/negociacion/Negociacion.js',
-      './components/Negociacion.js'
-    ];
+  // Rutas candidatas (ajústalas si tu archivo está en otro sitio)
+  const candidates = [
+    './components/negociacion/Negociacion.js', // public/src/components/negociacion/Negociacion.js
+    './components/Negociacion.js'              // public/src/components/Negociacion.js
+  ];
 
-    let mod = null;
-    for (const url of candidates) {
-      try {
-        mod = await import(url);
-        break;
-      } catch (e) {
-        console.warn('[Negociacion] no se pudo importar', url, e);
-      }
-    }
-
-    if (!mod) {
-      showNotification('No se pudo cargar el módulo de Negociación (revisa ruta y contenido del archivo)', 'error');
-      return;
-    }
-
-    const Ctor = mod.Negociacion || mod.default;
-    if (typeof Ctor !== 'function') {
-      showNotification('El módulo de Negociación no exporta una clase válida', 'error');
-      console.error('Exports encontrados:', Object.keys(mod));
-      return;
-    }
-
+  // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
+  const tryImport = async (url) => {
     try {
-      this.components.negociacion = new Ctor(container);
-      await this.components.negociacion.render();
+      // 1) Diagnóstico: ¿qué devuelve el servidor?
+      const res = await fetch(url, { cache: 'no-store' });
+      const ct = res.headers.get('content-type') || '';
+      const text = await res.text();
+      console.log('[Negociacion] probe', { url, status: res.status, contentType: ct, preview: text.slice(0, 120) });
+
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+
+      // 2) Si parece HTML/JSON, importará como módulo y fallará ⇒ forzamos Blob como "text/javascript"
+      const looksLikeHTML = /^\s*</.test(text);
+      const looksLikeJSON = /^\s*[{[]/.test(text);
+
+      if (!looksLikeHTML && !looksLikeJSON) {
+        // Podría ser JS válido: intenta import directo
+        try {
+          return await import(url);
+        } catch (e) {
+          console.warn('[Negociacion] import directo falló, intentaré Blob fallback', e);
+        }
+      } else {
+        console.warn('[Negociacion] El servidor devolvió HTML/JSON en', url);
+      }
+
+      // 3) Blob fallback: fuerza MIME JS y realiza import desde ObjectURL
+      const blob = new Blob([text], { type: 'text/javascript' });
+      const objURL = URL.createObjectURL(blob);
+      try {
+        const mod = await import(/* @vite-ignore */ objURL);
+        URL.revokeObjectURL(objURL);
+        return mod;
+      } catch (e) {
+        URL.revokeObjectURL(objURL);
+        throw e;
+      }
     } catch (err) {
-      console.error('Error iniciando Negociacion:', err);
-      showNotification('No se pudo iniciar Negociación', 'error');
+      console.warn('[Negociacion] No se pudo importar', url, err);
+      return null;
     }
+  };
+
+  let mod = null;
+  for (const url of candidates) {
+    mod = await tryImport(url);
+    if (mod) break;
   }
+
+  if (!mod) {
+    showNotification('No se pudo cargar el módulo de Negociación (revisa ruta y contenido del archivo)', 'error');
+    console.error('Todas las rutas fallaron:', candidates);
+    return;
+  }
+
+  // Acepta export nombrado o default
+  const Ctor = mod.Negociacion || mod.default;
+  if (typeof Ctor !== 'function') {
+    showNotification('El módulo de Negociación no exporta una clase válida', 'error');
+    console.error('Exports encontrados:', Object.keys(mod));
+    return;
+  }
+
+  try {
+    this.components.negociacion = new Ctor(container);
+    await this.components.negociacion.render();
+  } catch (err) {
+    console.error('Error iniciando Negociacion:', err);
+    showNotification('No se pudo iniciar Negociación', 'error');
+  }
+}
+
 
   // UI de Gestión (tabs clásicas)
   showGestionUI() {
@@ -507,3 +552,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
+
