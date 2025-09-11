@@ -1,4 +1,4 @@
-// /src/components/negociacion/Negociacion.js
+// src/components/negociacion/Negociacion.js
 import { excelApi } from '../../utils/excelApi.js';
 import { showNotification } from '../../utils/notifications.js';
 
