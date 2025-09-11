@@ -212,9 +212,10 @@ class App {
       </div>
     `;
 
-    // Rutas candidatas (ajústalas si tu archivo está en otro sitio)
+    // Ruta correcta
     const candidates = [
-      './components/negociacion/Negociacion.js', // public/src/components/negociacion/Negociacion.js
+      './components/negociacion/Negociacion.js', // ← Ruta principal donde tienes el archivo
+      './components/Negociacion.js'              // ← Fallback
     ];
 
     // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
@@ -325,6 +326,7 @@ class App {
     try {
       this.components.negociacion = new Ctor(container);
       await this.components.negociacion.render();
+      showNotification('Módulo de Negociación cargado correctamente', 'success');
     } catch (err) {
       console.error('Error iniciando Negociacion:', err);
       showNotification('No se pudo iniciar Negociación', 'error');
@@ -591,4 +593,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
-
