@@ -215,7 +215,6 @@ class App {
     // Rutas candidatas (ajústalas si tu archivo está en otro sitio)
     const candidates = [
       './components/negociacion/Negociacion.js', // public/src/components/negociacion/Negociacion.js
-      './components/Negociacion.js'              // public/src/components/Negociacion.js
     ];
 
     // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
@@ -592,3 +591,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
+
