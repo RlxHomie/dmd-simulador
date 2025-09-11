@@ -6,6 +6,7 @@ import { Dashboard } from './components/Dashboard.js';
 import { Simulador } from './components/Simulador.js';
 import { Seguimiento } from './components/Seguimiento.js';
 import { excelApi } from './utils/excelApi.js'; // ← para el fallback de Negociación
+import { Negociacion } from './components/negociacion/Negociacion.js';
 
 class App {
   constructor() {
@@ -214,8 +215,9 @@ class App {
 
     // Ruta correcta
     const candidates = [
-      './components/negociacion/Negociacion.js', // ← Ruta principal donde tienes el archivo
-      './components/Negociacion.js'              // ← Fallback
+      '/src/components/negociacion/Negociacion.js',
+      '/src/components/Negociacion.js',
+      '../components/negociacion/Negociacion.js'
     ];
 
     // Intenta importar directo; si falla por MIME/HTML, usa Blob fallback
@@ -593,3 +595,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 export { App };
+
